@@ -512,7 +512,7 @@
     const ids = ['dram_spot', 'nand_wafer_board', 'ddr4_spot_history', 'ddr5_spot_points', 'ddr5_kit_retail', 'nand_wafer_spot', 'trendforce_outlook', 'gpu_street', 'gpu_index'];
     const seen = new Map(), meta = dash.data('meta');
     // A page that is re-read goes by the name the refresh gives it.
-    if (meta.status === 'ok' && meta.data.sources) meta.data.sources.forEach((s) => { if (!seen.has(s.url)) seen.set(s.url, s.title); });
+    if (meta.status === 'ok' && meta.data.sources) meta.data.sources.forEach((s) => seen.set(s.url, seen.has(s.url) ? seen.get(s.url) + ' and ' + s.title.replace(/^Capital & Compute /, '') : s.title));
     ids.forEach((id) => {
       const got = dash.data(id);
       if (got.status === 'ok') got.data.forEach((r) => { if (r.source_url && !seen.has(r.source_url)) seen.set(r.source_url, r.source_name); });
