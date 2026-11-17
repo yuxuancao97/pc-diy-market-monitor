@@ -124,10 +124,25 @@ test("the data files hold the columns the page reads", () => {
 
 test("the page names its build on every file it loads, and the publish run fills it in", () => {
   const page = readFileSync(here("../site/index.html"), "utf8");
-  for (const file of ["look.css", "app.css", "runtime.js", "app.js"]) assert.ok(page.includes(`${file}?v=__BUILD__`), `${file} carries the build name`);
+  for (const file of ["look.css", "app.css", "rules.js", "runtime.js", "app.js"]) assert.ok(page.includes(`${file}?v=__BUILD__`), `${file} carries the build name`);
   assert.ok(page.includes('<meta name="build" content="__BUILD__">'));
   const run = readFileSync(here("../.github/workflows/refresh.yml"), "utf8");
   assert.ok(run.includes("s/__BUILD__/") && run.includes("site/build.json"));
+});
+
+test("a move under 1% is steady, and falling is the good direction for a builder", async () => {
+  await import("../site/rules.js");
+  const { direction, meaning } = globalThis.mmRules;
+  assert.deepEqual([-5.3, -1, -0.9, 0, 0.9, 1, 8.3].map(direction), ["Falling", "Falling", "Steady", "Steady", "Steady", "Rising", "Rising"]);
+  assert.deepEqual([-5.3, -0.9, 0, 0.9, 8.3].map(meaning), ["good", "", "", "", "bad"]);
+});
+
+test("the key prices table has the same six columns in every row", () => {
+  const page = readFileSync(here("../site/index.html"), "utf8");
+  const body = page.slice(page.indexOf('<table class="mm-key">'), page.indexOf("</table>", page.indexOf('<table class="mm-key">')));
+  const rows = body.split("<tr id=").slice(1);
+  assert.equal(rows.length, 6);
+  for (const row of rows) assert.deepEqual([...row.matchAll(/<td class="(mm-k-[a-z]+)"/g)].map((m) => m[1]), ["mm-k-name", "mm-k-dir", "mm-k-now", "mm-k-chg", "mm-k-ctx", "mm-k-trend"]);
 });
 
 test("nothing private or secret is in the files that get published", () => {

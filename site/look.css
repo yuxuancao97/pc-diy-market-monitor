@@ -1,29 +1,43 @@
 /* The look, and nothing else: colours, type and corners. The page's layout
-   is in app.css and reads only these names, so a new look is a new copy of
-   this file. Night instruments: graphite, with one soft colour per market. */
+   is in app.css and reads only these names. Colour has one job here: green
+   marks a move that is cheaper for builders, red one that is dearer. Charts
+   and bars are drawn in one neutral ink. */
 :root {
-  color-scheme: dark;
-  --color-bg: #0f1114;
-  --color-panel: #171a1e;
-  --color-track: #272b31;
-  --color-fg: #e9ebee;
-  --color-fg-muted: #969da6;
-  --color-pop: #22262c;
-  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --series-1: #ffb648;
-  --series-2: #e9ebee;
-  --c-ddr5: #5fd4dc;
-  --c-ddr4: #ffb648;
-  --c-kit: #ff8370;
-  --c-nand: #b9a2ff;
-  --c-gpu: #8fe08a;
-  --c-amd: #ff8370;
-  --c-contract: #f4d35e;
-  --font-headline: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --size-caption: 12.5px;
-  --size-body: 14px;
-  --size-heading: 16px;
-  --radius: 14px;
+  color-scheme: light;
+  --color-bg: #ffffff;
+  --color-panel: #f4f5f7;
+  --color-row: #ebedf0;
+  --color-track: #dfe2e6;
+  --color-fg: #14171a;
+  --color-fg-muted: #59616b;
+  --color-good: #0a7a43;
+  --color-bad: #c22a2a;
+  --color-pop: #ffffff;
+  --shadow-pop: 0 6px 20px rgba(0, 0, 0, 0.16);
+  --series-1: #2c3a4a;
+  --series-2: #8a94a0;
+  --font-headline: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --size-caption: 13px;
+  --size-body: 15px;
+  --size-heading: 17px;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-bg: #111417;
+    --color-panel: #1a1e22;
+    --color-row: #22272c;
+    --color-track: #2c3238;
+    --color-fg: #eceef0;
+    --color-fg-muted: #a3aab2;
+    --color-good: #4ccb85;
+    --color-bad: #ff8078;
+    --color-pop: #242a30;
+    --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --series-1: #d3d9df;
+    --series-2: #7f8994;
+  }
 }
