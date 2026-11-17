@@ -41,12 +41,23 @@ const page = (source) => {
 };
 async function fetchPage(source) {
   if (from) return readFile(join(from, source.id + ".html"), "utf8");
-  const response = await fetch(source.url, {
-    headers: { "user-agent": "pc-diy-market-monitor (static dashboard, hourly read)", accept: "text/html" },
-    signal: AbortSignal.timeout(40_000),
-  });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return response.text();
+  // A source sometimes refuses the first request from a new address and
+  // answers the next one, so a failed read is tried again after a pause.
+  let last;
+  for (const wait of [0, 4_000, 12_000]) {
+    if (wait) await new Promise((done) => setTimeout(done, wait));
+    try {
+      const response = await fetch(source.url, {
+        headers: { "user-agent": "pc-diy-market-monitor (static dashboard, hourly read)", accept: "text/html" },
+        signal: AbortSignal.timeout(40_000),
+      });
+      if (response.ok) return await response.text();
+      last = new Error(`HTTP ${response.status}`);
+    } catch (error) {
+      last = error;
+    }
+  }
+  throw last;
 }
 
 const now = new Date().toISOString();
