@@ -37,10 +37,30 @@
   let queued = 0;
   const schedule = () => { if (!queued) queued = requestAnimationFrame(() => { queued = 0; run(); }); };
 
+  // Data is asked for again each time, never taken from the browser's copy.
+  // A file that cannot be read keeps the rows it had.
+  const load = () => FILES.forEach((id) => fetch(`data/${id}.json`, { cache: "no-cache" })
+    .then((response) => (response.ok ? response.json() : Promise.reject(new Error(response.status))))
+    .then((rows) => { store[id] = rows; state[id] = "ok"; }, () => { if (!(id in store)) state[id] = "error"; })
+    .then(schedule));
+
+  // The publish run writes its build name into the page and into build.json.
+  // A browser holding an older copy, or a page left open, sees the two differ
+  // and moves to the newest build, once per build.
+  const built = document.querySelector('meta[name="build"]')?.content || "";
+  async function newest() {
+    if (!built || built.startsWith("__")) return;
+    try {
+      const latest = (await (await fetch("build.json", { cache: "no-store" })).json()).build;
+      const asked = new URLSearchParams(location.search).get("b");
+      if (latest && latest !== built && asked !== latest) location.replace(`${location.pathname}?b=${encodeURIComponent(latest)}`);
+    } catch { /* offline, or run locally without a build name */ }
+  }
+  const again = () => { newest(); load(); };
+
   addEventListener("resize", schedule);
   addEventListener("DOMContentLoaded", schedule);
-  FILES.forEach((id) => fetch(`data/${id}.json`, { cache: "no-cache" })
-    .then((response) => (response.ok ? response.json() : Promise.reject(new Error(response.status))))
-    .then((rows) => { store[id] = rows; state[id] = "ok"; }, () => { state[id] = "error"; })
-    .then(schedule));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) again(); });
+  setInterval(again, 5 * 60 * 1000);
+  again();
 })();
