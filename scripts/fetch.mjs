@@ -20,7 +20,9 @@ const DRAM_ITEMS = {
 export const SOURCES = [
   { id: "dram_spot", title: "TrendForce DRAM, module and GDDR spot boards", url: "https://www.trendforce.com/price/dram/dram_spot", parse: (html, url) => trendforce(html, DRAM_ITEMS, url) },
   { id: "nand_wafer_board", title: "TrendForce NAND wafer spot board", url: "https://www.trendforce.com/price/flash/flash_spot", parse: (html, url) => trendforce(html, { "512Gb TLC": "NAND wafer spot" }, url) },
-  { id: "ddr4_spot_history", title: "Capital & Compute DDR4 spot readings", url: "https://capitalandcompute.net/memory-prices/history/", parse: ddr4History },
+  // The history page refuses GitHub's servers, and the same readings are on the
+  // memory prices page, which is read once for both series.
+  { id: "ddr4_spot_history", title: "Capital & Compute DDR4 spot readings", url: "https://capitalandcompute.net/memory-prices/", parse: ddr4History },
   { id: "ddr5_kit_retail", title: "Capital & Compute 32GB DDR5 kit prices", url: "https://capitalandcompute.net/memory-prices/", parse: kitRetail },
   { id: "gpu_street", title: "ComputingForGeeks graphics card prices", url: "https://computingforgeeks.com/gpu-prices/", parse: gpuStreet },
   { id: "gpu_index", title: "TechFuelHQ GPU Price Index", url: "https://techfuelhq.com/data/gpu-price-index/", parse: gpuIndex },
@@ -31,7 +33,13 @@ const load = async (name, fallback) => {
 };
 const save = (name, value) => writeFile(join(DATA, name + ".json"), JSON.stringify(value, null, 1) + "\n");
 
-async function page(source) {
+const read = new Map();
+const page = (source) => {
+  const key = from ? source.id : source.url;
+  if (!read.has(key)) read.set(key, fetchPage(source));
+  return read.get(key);
+};
+async function fetchPage(source) {
   if (from) return readFile(join(from, source.id + ".html"), "utf8");
   const response = await fetch(source.url, {
     headers: { "user-agent": "pc-diy-market-monitor (static dashboard, hourly read)", accept: "text/html" },

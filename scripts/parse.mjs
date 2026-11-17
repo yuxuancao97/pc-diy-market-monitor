@@ -75,9 +75,10 @@ export function trendforce(html, want, url) {
 const MONTHS = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
 const two = (n) => String(n).padStart(2, "0");
 
-// Capital & Compute: the table headed "Reading date" and "Spot price".
+// Capital & Compute prints the same DDR4 readings on two pages: a table headed
+// "Reading date" and "Spot price", and one headed "Week" and "DDR4 1Gx8 spot".
 export function ddr4History(html, url) {
-  const table = tables(html).find((t) => t.head[0] === "Reading date" && t.head[1] === "Spot price");
+  const table = tables(html).find((t) => (t.head[0] === "Reading date" && t.head[1] === "Spot price") || (t.head[0] === "Week" && t.head[1] === "DDR4 1Gx8 spot"));
   if (!table || table.rows.length < 2) throw new Error("The DDR4 readings table was not found");
   return table.rows.map((cells) => {
     const date = cells[0].match(/^([A-Z][a-z]{2}) (\d{1,2}), (\d{4})$/);
