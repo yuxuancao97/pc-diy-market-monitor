@@ -50,6 +50,11 @@ test("DDR4 readings are dated and sorted", () => {
   assert.deepEqual([rows.at(-1).date, rows.at(-1).price], ["2026-11-16", 44.36]);
 });
 
+test("the same DDR4 readings are read from the memory prices page", () => {
+  const rows = ddr4History(fixture("ddr5_kit_retail"), "u");
+  assert.deepEqual(rows, ddr4History(fixture("ddr4_spot_history"), "u"));
+});
+
 test("kit prices carry cheapest and average", () => {
   const rows = kitRetail(fixture("ddr5_kit_retail"), "u");
   assert.equal(rows.length, 16);
