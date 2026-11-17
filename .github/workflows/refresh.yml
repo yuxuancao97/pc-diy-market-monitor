@@ -35,7 +35,8 @@ jobs:
         run: |
           if git ls-remote --exit-code --heads origin data > /dev/null 2>&1; then
             git fetch --depth 1 origin data
-            git archive FETCH_HEAD | tar -x -C site/data
+            # The forecasts are edited by hand on main, so main's copy wins.
+            git archive FETCH_HEAD | tar -x -C site/data --exclude=trendforce_outlook.json
           fi
       - name: Read the source pages
         run: node scripts/fetch.mjs
