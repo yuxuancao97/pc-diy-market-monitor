@@ -56,7 +56,14 @@ read by anyone.
 
 - No middle dot, em dash, exclamation mark or emoji in page copy.
 - No thin line separators; space and fill separate.
-- No chips, pills, arrows, gradients, glows or count-ups.
+- No chips, pills, arrows, gradients, glows, count-ups or moving text.
+- The page is read by sales people in a hurry. The key prices table comes
+  first: one row per price, the same thing in the same column every time,
+  a plain name before the exact item name.
+- Colour means one thing: green is cheaper for builders, red is dearer. It
+  always sits with a sign or a word. Charts and bars use one neutral ink.
+- The rule that turns a change into Falling, Rising or Steady is in
+  `site/rules.js` and is tested. Do not judge a number anywhere else.
 - Before rewording a string, ask whether it should exist at all.
 
 ## Parallel work

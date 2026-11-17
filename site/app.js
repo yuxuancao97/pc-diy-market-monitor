@@ -18,6 +18,7 @@
     text: (v) => String(v),
     date: (v) => fDay(parse(v)),
     dateY: (v) => fDayY(parse(v)),
+    age: (v) => { const days = Math.round((Date.now() - parse(v)) / 864e5); return days <= 0 ? 'today' : days === 1 ? '1 day ago' : days + ' days ago'; },
   };
 
   // Summaries. Each returns one row so every printed figure can be traced to it.
@@ -94,6 +95,16 @@
       return live ? [{ latest: live.session_avg, latest_date: live.as_of, weekly_change_pct: live.change_pct }] : [];
     },
   });
+  dash.calc('nand_window', {
+    title: '512Gb TLC wafer spot, change across the saved readings',
+    description: 'Latest saved reading against the first one in the file.',
+    inputs: ['nand_wafer_spot'],
+    fn: (readings) => {
+      if (readings.length < 2) return [];
+      const first = readings[0], last = readings[readings.length - 1];
+      return [{ from_date: first.date, change_pct: Math.round((last.price / first.price - 1) * 1000) / 10 }];
+    },
+  });
   dash.calc('spot_boards', {
     title: 'TrendForce spot boards, both pages',
     description: 'Rows from the DRAM page followed by the wafer row from the NAND flash page.',
@@ -109,7 +120,7 @@
       if (!priced.length) return [];
       const mid = priced.length >> 1;
       const median = priced.length % 2 ? priced[mid] : Math.round(((priced[mid - 1] + priced[mid]) / 2) * 10) / 10;
-      return [{ median_premium_pct: median, priced: priced.length, no_stock: cards.length - priced.length, observed: cards.map((c) => c.observed).sort().pop() }];
+      return [{ median_premium_pct: median, lowest_pct: priced[0], highest_pct: priced[priced.length - 1], priced: priced.length, no_stock: cards.length - priced.length, observed: cards.map((c) => c.observed).sort().pop() }];
     },
   });
   dash.calc('gpu_index_latest', {
@@ -165,50 +176,38 @@
     const v = row ? row[node.dataset.field] : null;
     node.textContent = v == null ? '' : (F[node.dataset.fmt] || String)(v);
     const tone = node.dataset.tone === 'price' && v != null;
-    node.classList.toggle('mm-fav', tone && v < 0);
-    node.classList.toggle('mm-adv', tone && v > 0);
+    node.classList.toggle('mm-good', tone && mmRules.meaning(v) === 'good');
+    node.classList.toggle('mm-bad', tone && mmRules.meaning(v) === 'bad');
   });
 
-  // Moving tape of the spot boards. Rebuilt only when the rows change, so the motion never restarts on a redraw.
-  dash.draw('tape', {
-    mount: (box) => {
-      const track = el('div', 'mm-tape-track');
-      box.append(track);
-      return { track, sig: '' };
-    },
-    update: (box, made) => {
-      const got = dash.data('spot_boards');
-      box.classList.toggle('mm-loading', got.status === 'loading');
-      const rows = got.status === 'ok' && got.data ? got.data : [];
-      const sig = JSON.stringify(rows.map((r) => [r.item, r.session_avg, r.change_pct]));
-      if (sig === made.sig) return;
-      made.sig = sig;
-      const half = (hidden) => {
-        const h = el('div', 'mm-tape-half');
-        if (hidden) h.setAttribute('aria-hidden', 'true');
-        rows.forEach((r) => {
-          const item = el('span', 'mm-tape-item');
-          const move = el('span', 'mm-move' + (r.change_pct < 0 ? ' mm-fav' : r.change_pct > 0 ? ' mm-adv' : ''), F.pct2(r.change_pct));
-          item.append(el('span', 'mm-tape-name', r.item), el('span', 'mm-tape-val', chip(r.session_avg)), move);
-          h.append(item);
-        });
-        return h;
-      };
-      made.track.replaceChildren(...(rows.length ? [half(false), half(true)] : []));
-      made.track.style.animationDuration = Math.max(40, rows.length * 8) + 's';
-    },
+  // A word for where a price is heading, or for where a level stands.
+  dash.draw('dir', (node) => {
+    const got = rowsOf(node, [node.dataset.source], true);
+    if (!got) return;
+    let row = got[0][0];
+    if (node.dataset.where) {
+      const i = node.dataset.where.indexOf('=');
+      row = got[0].find((r) => String(r[node.dataset.where.slice(0, i)]) === node.dataset.where.slice(i + 1));
+    }
+    const v = row ? row[node.dataset.field] : null;
+    if (v == null) { node.textContent = ''; return; }
+    const level = node.dataset.kind === 'level';
+    node.textContent = level ? (v > 0 ? node.dataset.up : v < 0 ? node.dataset.down : node.dataset.flat) : mmRules.direction(v);
+    const means = level ? (v > 0 ? 'bad' : v < 0 ? 'good' : '') : mmRules.meaning(v);
+    node.classList.toggle('mm-good', means === 'good');
+    node.classList.toggle('mm-bad', means === 'bad');
   });
 
   dash.draw('spark', (box) => {
     const got = rowsOf(box, [box.dataset.source], true);
     if (!got) return;
-    const f = box.dataset.field, col = box.dataset.color ? 'var(' + box.dataset.color + ')' : col;
+    const f = box.dataset.field, col = box.dataset.color ? 'var(' + box.dataset.color + ')' : C(0);
     const pts = got[0].filter((r) => r[f] != null).map((r) => ({ t: parse(r.date), v: +r[f] }));
     if (pts.length < 2) return box.replaceChildren();
-    const W = Math.max(box.clientWidth, 80), H = 60;
-    const x = d3.scaleUtc().domain(d3.extent(pts, (d) => d.t)).range([0, W - 8]);
+    const W = Math.max(box.clientWidth, 80), H = 40;
+    const x = d3.scaleUtc().domain(d3.extent(pts, (d) => d.t)).range([2, W - 6]);
     const [lo, hi] = d3.extent(pts, (d) => d.v);
-    const y = d3.scaleLinear().domain(lo === hi ? [lo - 1, hi + 1] : [lo, hi]).range([H - 12, 8]);
+    const y = d3.scaleLinear().domain(lo === hi ? [lo - 1, hi + 1] : [lo, hi]).range([H - 6, 6]);
     const svg = d3.create('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('width', '100%').attr('height', H)
       .attr('role', 'img').attr('aria-label', box.dataset.label || 'Trend');
     svg.append('path').attr('d', d3.area().x((d) => x(d.t)).y0(H).y1((d) => y(d.v))(pts)).style('fill', col).style('opacity', 0.2);
@@ -216,38 +215,6 @@
       .attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round');
     const last = pts[pts.length - 1];
     svg.append('circle').attr('cx', x(last.t)).attr('cy', y(last.v)).attr('r', 3.5).style('fill', col);
-    box.replaceChildren(svg.node());
-  });
-
-  // Premium over MSRP per card as small bars, highest first.
-  dash.draw('mini-bars', (box) => {
-    const got = rowsOf(box, ['gpu_street'], true);
-    if (!got) return;
-    const vals = got[0].filter((r) => r.premium_pct != null).map((r) => r.premium_pct).sort((a, b) => b - a);
-    if (!vals.length) return box.replaceChildren();
-    const W = Math.max(box.clientWidth, 80), H = 60, gap = 3, bw = (W - 36 - gap * (vals.length - 1)) / vals.length;
-    const y = d3.scaleLinear().domain([0, d3.max(vals)]).range([0, H - 12]);
-    const svg = d3.create('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('width', '100%').attr('height', H)
-      .attr('role', 'img').attr('aria-label', box.dataset.label || 'Bars');
-    svg.selectAll('rect').data(vals).join('rect').attr('x', (d, i) => 18 + i * (bw + gap)).attr('y', (d) => H - 12 - y(d))
-      .attr('width', Math.max(bw, 1)).attr('height', (d) => Math.max(y(d), 1)).attr('rx', 2).style('fill', box.dataset.color ? 'var(' + box.dataset.color + ')' : C(0));
-    box.replaceChildren(svg.node());
-  });
-
-  // The PC DRAM forecast as a bar on a scale that starts at zero.
-  dash.draw('mini-range', (box) => {
-    const got = rowsOf(box, ['trendforce_outlook'], true);
-    if (!got) return;
-    const rows = got[0].filter((r) => r.kind === 'contract'), row = rows.find((r) => r.metric === 'PC DRAM');
-    if (!row) return box.replaceChildren();
-    const W = Math.max(box.clientWidth, 80), H = 60;
-    const x = d3.scaleLinear().domain([0, d3.max(rows, (r) => r.high_pct)]).nice(4).range([18, W - 18]);
-    const svg = d3.create('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('width', '100%').attr('height', H)
-      .attr('role', 'img').attr('aria-label', box.dataset.label || 'Range');
-    svg.append('rect').attr('x', 18).attr('y', 14).attr('width', W - 36).attr('height', 10).attr('rx', 2).style('fill', 'var(--color-fg)').style('opacity', 0.14);
-    svg.append('rect').attr('x', x(row.low_pct)).attr('y', 14).attr('width', Math.max(x(row.high_pct) - x(row.low_pct), 4)).attr('height', 10).attr('rx', 2).style('fill', C(0));
-    svg.append('text').attr('class', 'mm-tick').attr('x', 18).attr('y', 44).text('0%');
-    svg.append('text').attr('class', 'mm-tick').attr('x', W - 18).attr('y', 44).attr('text-anchor', 'end').text('+' + x.domain()[1] + '%');
     box.replaceChildren(svg.node());
   });
 
@@ -340,7 +307,7 @@
     const got = rowsOf(box, ['ddr4_spot_history']);
     if (!got) return;
     lineChart(box, {
-      height: 280, gapDays: 45, colors: ['var(--c-ddr4)'], aria: 'DDR4 8Gb spot price by reading date, US dollars per chip',
+      height: 280, gapDays: 45, aria: 'DDR4 8Gb spot price by reading date, US dollars per chip',
       series: [{ label: 'spot', pts: inPeriod(got[0]).map((r) => ({ t: parse(r.date), v: r.price })) }],
       fmt: (v) => '$' + chip(v), tick: (v) => '$' + v,
     });
@@ -350,7 +317,7 @@
     const got = rowsOf(box, ['ddr5_kit_retail']);
     if (!got) return;
     lineChart(box, {
-      height: 280, colors: ['var(--c-kit)', 'var(--color-fg)'], aria: 'Cheapest and average listing for a 2x16GB DDR5-6000 CL30 kit, US dollars',
+      height: 280, aria: 'Cheapest and average listing for a 2x16GB DDR5-6000 CL30 kit, US dollars',
       series: [
         { label: 'cheapest', pts: inPeriod(got[0]).map((r) => ({ t: parse(r.date), v: r.cheapest })) },
         { label: 'average', pts: inPeriod(got[0]).map((r) => ({ t: parse(r.date), v: r.average })) },
@@ -363,7 +330,7 @@
     const got = rowsOf(box, ['gpu_index']);
     if (!got) return;
     lineChart(box, {
-      height: 220, colors: ['var(--c-gpu)'], aria: 'Median premium over launch price at Newegg by capture date, percent',
+      height: 220, aria: 'Median premium over launch price at Newegg by capture date, percent',
       series: [{ label: 'median', pts: inPeriod(got[0]).map((r) => ({ t: parse(r.date), v: r.median_premium_pct })) }],
       fmt: (v) => '+' + v.toFixed(1) + '%', tick: (v) => '+' + v + '%',
     });
@@ -376,7 +343,7 @@
     body.replaceChildren(...rows.map((r) => {
       const tr = el('tr');
       const change = el('td', 'mm-r');
-      change.append(el('span', 'mm-move' + (r.change_pct < 0 ? ' mm-fav' : r.change_pct > 0 ? ' mm-adv' : ''), F.pct2(r.change_pct)));
+      change.append(el('span', 'mm-move' + (r.change_pct < 0 ? ' mm-good' : r.change_pct > 0 ? ' mm-bad' : ''), F.pct2(r.change_pct)));
       const span = el('div', 'mm-span');
       const end = (field) => {
         const n = el('span', 'mm-span-n', chip(r[field]));
@@ -412,7 +379,7 @@
     const g = svg.append('g').selectAll('g').data(rows).join('g').attr('transform', (r, i) => `translate(0,${top + i * rh})`);
     g.append('rect').attr('x', x.range()[0]).attr('y', 11).attr('width', x.range()[1] - x.range()[0]).attr('height', 18).attr('rx', 2)
       .style('fill', 'var(--color-fg)').style('opacity', 0.1);
-    g.append('rect').attr('x', (r) => x(r.low_pct)).attr('y', 11).attr('width', (r) => Math.max(x(r.high_pct) - x(r.low_pct), 4)).attr('height', 18).attr('rx', 5).style('fill', 'var(--c-contract)');
+    g.append('rect').attr('x', (r) => x(r.low_pct)).attr('y', 11).attr('width', (r) => Math.max(x(r.high_pct) - x(r.low_pct), 4)).attr('height', 18).attr('rx', 5).style('fill', C(0));
     g.append('text').attr('class', 'mm-end').attr('x', 0).attr('y', 17).text((r) => r.metric);
     g.append('text').attr('class', 'mm-tick').attr('x', 0).attr('y', 34).text((r) => 'published ' + F.date(r.published));
     g.append('text').attr('class', 'mm-end').attr('x', (r) => x(r.high_pct) + 9).attr('y', 20).attr('dy', '0.32em').text((r) => r.range_text);
@@ -430,7 +397,7 @@
     const name = (r) => (/GB$/.test(r.card) ? r.card : r.card + ' ' + r.vram);
     const pct = (r) => (r.street == null ? r.seller : F.pct1(r.premium_pct));
     const price = (r) => (r.street == null ? 'MSRP ' + money(r.msrp) : money(r.street) + ' from ' + money(r.msrp));
-    const tone = (r) => (r.brand === 'NVIDIA' ? 'var(--c-gpu)' : r.brand === 'AMD' ? 'var(--c-amd)' : 'var(--color-fg-muted)');
+    const tone = () => C(0);
     const W = Math.max(box.clientWidth, 260), narrow = W < 560, rh = narrow ? 50 : 34, H = rows.length * rh + 4;
     const { svg, measure, show, hide } = stage(box, W, H, 'Lowest new price over MSRP by graphics card, percent');
     const lw = narrow ? 0 : d3.max(rows, (r) => measure(name(r), 'mm-end')) + 16;
@@ -444,7 +411,7 @@
     if (narrow) {
       g.append('text').attr('class', 'mm-tick').attr('x', W).attr('y', ty).attr('text-anchor', 'end').text((r) => (r.street == null ? r.seller : F.pct1(r.premium_pct) + '  ' + money(r.street)));
     } else {
-      g.append('text').attr('class', (r) => (r.street == null ? 'mm-tick' : 'mm-end')).attr('x', (r) => (r.street == null ? x(0) : x(r.premium_pct) + 9)).attr('y', ty).attr('dy', '0.32em').text(pct);
+      g.append('text').attr('class', (r) => (r.street == null ? 'mm-tick' : 'mm-end' + (r.premium_pct > 0 ? ' mm-bad' : r.premium_pct < 0 ? ' mm-good' : ''))).attr('x', (r) => (r.street == null ? x(0) : x(r.premium_pct) + 9)).attr('y', ty).attr('dy', '0.32em').text(pct);
       g.append('text').attr('class', 'mm-tick').attr('x', W).attr('y', ty).attr('dy', '0.32em').attr('text-anchor', 'end').text(price);
     }
     g.append('rect').attr('x', 0).attr('y', 0).attr('width', W).attr('height', rh).style('fill', 'transparent')
@@ -456,50 +423,6 @@
       .on('pointerleave', hide);
   });
 
-  // Where each figure stands inside its own range. Every bound is a value from the data.
-  function dialOf(kind) {
-    const rows = (id) => { const got = dash.data(id); return got.status === 'ok' && got.data ? got.data : null; };
-    if (kind === 'ddr5' || kind === 'nand') {
-      const board = rows(kind === 'ddr5' ? 'dram_spot' : 'nand_wafer_board');
-      const row = board && board.find((r) => r.item === (kind === 'ddr5' ? 'DDR5 16Gb (2Gx8) 4800/5600' : '512Gb TLC'));
-      return row ? { lo: row.low, hi: row.high, at: row.session_avg, note: (kind === 'ddr5' ? 'Session ' : 'Week ') + chip(row.low) + ' to ' + chip(row.high) } : null;
-    }
-    if (kind === 'ddr4' || kind === 'kit') {
-      const all = rows(kind === 'ddr4' ? 'ddr4_spot_history' : 'ddr5_kit_retail'), f = kind === 'ddr4' ? 'price' : 'cheapest';
-      if (!all || !all.length) return null;
-      const lo = d3.min(all, (r) => r[f]), hi = d3.max(all, (r) => r[f]);
-      const show = kind === 'ddr4' ? (v) => '$' + chip(v) : F.usd0;
-      return { lo, hi, at: all[all.length - 1][f], note: show(lo) + ' to ' + show(hi) + ' since ' + F.dateY(all[0].date) };
-    }
-    if (kind === 'gpu') {
-      const cards = rows('gpu_street'), mid = rows('gpu_summary');
-      const pcts = cards ? cards.filter((c) => c.premium_pct != null).map((c) => c.premium_pct) : [];
-      if (!pcts.length || !mid || !mid[0]) return null;
-      return { lo: d3.min(pcts), hi: d3.max(pcts), at: mid[0].median_premium_pct, note: 'Cards from ' + F.pct1(d3.min(pcts)) + ' to ' + F.pct1(d3.max(pcts)) };
-    }
-    const outlook = rows('trendforce_outlook'), row = outlook && outlook.find((r) => r.metric === 'PC DRAM');
-    if (!row) return null;
-    const top = d3.scaleLinear().domain([0, d3.max(outlook.filter((r) => r.kind === 'contract'), (r) => r.high_pct)]).nice(4).domain()[1];
-    return { lo: 0, hi: top, from: row.low_pct, at: row.high_pct, note: 'On a scale of 0 to +' + top + '%' };
-  }
-  dash.draw('dial', (box) => {
-    const d = dialOf(box.dataset.dial);
-    box.classList.toggle('mm-loading', !d);
-    if (!d) return box.replaceChildren();
-    const a0 = -Math.PI * 0.72, a1 = Math.PI * 0.72;
-    const arc = d3.arc().innerRadius(60).outerRadius(72).cornerRadius(6);
-    const pos = (v) => a0 + (a1 - a0) * Math.min(Math.max(d.hi > d.lo ? (v - d.lo) / (d.hi - d.lo) : 1, 0), 1);
-    const svg = d3.create('svg').attr('viewBox', '0 0 170 124').attr('width', '100%').attr('role', 'img').attr('aria-label', box.dataset.label || 'Range');
-    const g = svg.append('g').attr('transform', 'translate(85,80)');
-    g.append('path').attr('d', arc({ startAngle: a0, endAngle: a1 })).style('fill', 'var(--color-track)');
-    const from = d.from != null ? pos(d.from) : a0;
-    g.append('path').attr('d', arc({ startAngle: from, endAngle: Math.min(Math.max(pos(d.at), from + 0.14), a1) })).style('fill', 'var(' + box.dataset.color + ')');
-    box.replaceChildren(svg.node());
-  });
-  dash.draw('dial-range', (node) => {
-    const d = dialOf(node.dataset.dial);
-    node.textContent = d ? d.note : '';
-  });
   dash.draw('status', (node) => {
     const got = dash.data('meta');
     if (got.status !== 'ok' || !got.data.sources) { node.textContent = ''; return; }
