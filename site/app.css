@@ -14,8 +14,10 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); }
 @keyframes mm-tape { to { transform: translateX(-50%); } }
 
 .mm-head { display: flex; flex-direction: column; gap: 14px; }
-.mm-title { margin: 0; font-family: var(--font-headline); font-weight: 800; font-size: clamp(30px, 6.4cqi, 54px); line-height: 1.04; text-wrap: balance; }
-.mm-take { margin: 0; max-width: 60ch; font-size: clamp(16px, 2.5cqi, 20px); line-height: 1.45; }
+.mm-title { margin: 0; font-family: var(--font-headline); font-weight: 600; font-size: clamp(22px, 3.2cqi, 30px); line-height: 1.15; text-wrap: balance; }
+.mm-take { margin: 0; max-width: 70ch; font-size: clamp(15px, 1.9cqi, 17px); line-height: 1.5; }
+.mm-headrow { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; }
+.mm-status { margin: 0; font-family: var(--font-mono); font-size: var(--size-caption); color: var(--color-fg-muted); }
 .mm-muted { margin: 0; color: var(--color-fg-muted); font-size: var(--size-caption); max-width: 72ch; }
 .mm-v { font-variant-numeric: tabular-nums; }
 .mm-v.mm-loading { display: inline-block; min-width: 3.5ch; min-height: 1em; vertical-align: middle; }
@@ -23,26 +25,31 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); }
 .mm-move { font-weight: 700; white-space: nowrap; }
 
 .mm-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-@container (min-width: 700px) { .mm-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@container (min-width: 600px) { .mm-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@container (min-width: 1120px) { .mm-tiles { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 .mm-tile { min-width: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--color-panel); border-radius: var(--radius); }
-.mm-tile-body { display: flex; flex-direction: column; gap: 5px; padding: 18px 18px 12px; }
+.mm-tile-body { display: flex; flex-direction: column; gap: 4px; padding: 4px 12px 14px; text-align: center; }
+.mm-dial { position: relative; width: min(100%, 196px); margin: 14px auto 0; }
+.mm-dial-arc { min-height: 96px; }
+.mm-dial-arc svg { display: block; }
+.mm-dial .mm-big { position: absolute; left: 0; right: 0; top: 64.5%; transform: translateY(-50%); text-align: center; }
 .mm-label { margin: 0; font-size: var(--size-caption); color: var(--color-fg-muted); }
-.mm-big { margin: 0; font-family: var(--font-headline); font-weight: 700; font-size: clamp(22px, 4.6cqi, 36px); line-height: 1.08; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.mm-big { margin: 0; font-family: var(--font-mono); font-weight: 600; font-size: 20px; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mm-line { margin: 0; font-size: var(--size-caption); font-variant-numeric: tabular-nums; }
 .mm-graphic { margin-top: auto; min-height: 60px; }
 .mm-graphic svg { display: block; }
 
 .mm-range { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .mm-rset { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; background: var(--color-panel); border-radius: var(--radius); }
-.mm-rbtn { border: 0; margin: 0; padding: 7px 15px; border-radius: 2px; background: transparent; color: var(--color-fg-muted); font: inherit; font-size: var(--size-caption); font-weight: 700; cursor: pointer; }
+.mm-rbtn { border: 0; margin: 0; padding: 7px 15px; border-radius: 10px; background: transparent; color: var(--color-fg-muted); font: inherit; font-size: var(--size-caption); font-weight: 700; cursor: pointer; }
 .mm-rbtn:hover { color: var(--color-fg); }
 .mm-rbtn:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
 .mm-rbtn[aria-pressed="true"] { background: var(--color-fg); color: var(--color-bg); }
 
 .mm-sec { display: flex; flex-direction: column; gap: 18px; }
 .mm-sechead { display: flex; flex-direction: column; gap: 6px; }
-.mm-h2 { margin: 0; font-family: var(--font-headline); font-weight: 800; font-size: clamp(20px, 3.4cqi, 28px); line-height: 1.15; }
-.mm-h3 { margin: 0; font-family: var(--font-headline); font-weight: 700; font-size: var(--size-heading); line-height: 1.25; }
+.mm-h2 { margin: 0; font-family: var(--font-headline); font-weight: 600; font-size: clamp(18px, 2.4cqi, 22px); line-height: 1.2; }
+.mm-h3 { margin: 0; font-family: var(--font-headline); font-weight: 600; font-size: var(--size-heading); line-height: 1.25; }
 .mm-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 @container (min-width: 820px) { .mm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mm-grid-wide { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
 .mm-card { min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 22px; background: var(--color-panel); border-radius: var(--radius); }
@@ -73,7 +80,7 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); }
 .mm-col-board { display: none; }
 @container (min-width: 900px) { .mm-table .mm-col-board { display: table-cell; } }
 .mm-span-n { color: var(--color-fg-muted); min-width: 5ch; }
-.mm-track { position: relative; flex: 1; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--color-fg) 16%, transparent); }
+.mm-track { position: relative; flex: 1; height: 6px; border-radius: 3px; background: var(--color-track); }
 .mm-dot { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--mm-accent); }
 
 .mm-notes { font-size: var(--size-caption); color: var(--color-fg-muted); }
@@ -82,3 +89,6 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); }
 .mm-sources { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; font-size: var(--size-caption); }
 .mm-link { color: inherit; text-underline-offset: 3px; }
 
+.mm-big .mm-v, .mm-move, .mm-tick, .mm-end, .mm-tip, .mm-tape-val, .mm-span-n, .mm-table td, .mm-rbtn { font-family: var(--font-mono); }
+.mm-table td.mm-item:first-child, .mm-table td.mm-col-board { font-family: var(--font-body); }
+.mm-grid-wide { align-items: start; }
