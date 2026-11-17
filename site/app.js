@@ -202,7 +202,7 @@
   dash.draw('spark', (box) => {
     const got = rowsOf(box, [box.dataset.source], true);
     if (!got) return;
-    const f = box.dataset.field;
+    const f = box.dataset.field, col = box.dataset.color ? 'var(' + box.dataset.color + ')' : col;
     const pts = got[0].filter((r) => r[f] != null).map((r) => ({ t: parse(r.date), v: +r[f] }));
     if (pts.length < 2) return box.replaceChildren();
     const W = Math.max(box.clientWidth, 80), H = 60;
@@ -211,11 +211,11 @@
     const y = d3.scaleLinear().domain(lo === hi ? [lo - 1, hi + 1] : [lo, hi]).range([H - 12, 8]);
     const svg = d3.create('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('width', '100%').attr('height', H)
       .attr('role', 'img').attr('aria-label', box.dataset.label || 'Trend');
-    svg.append('path').attr('d', d3.area().x((d) => x(d.t)).y0(H).y1((d) => y(d.v))(pts)).style('fill', C(0)).style('opacity', 0.2);
-    svg.append('path').attr('d', d3.line().x((d) => x(d.t)).y((d) => y(d.v))(pts)).style('fill', 'none').style('stroke', C(0))
+    svg.append('path').attr('d', d3.area().x((d) => x(d.t)).y0(H).y1((d) => y(d.v))(pts)).style('fill', col).style('opacity', 0.2);
+    svg.append('path').attr('d', d3.line().x((d) => x(d.t)).y((d) => y(d.v))(pts)).style('fill', 'none').style('stroke', col)
       .attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round');
     const last = pts[pts.length - 1];
-    svg.append('circle').attr('cx', x(last.t)).attr('cy', y(last.v)).attr('r', 3.5).style('fill', C(0));
+    svg.append('circle').attr('cx', x(last.t)).attr('cy', y(last.v)).attr('r', 3.5).style('fill', col);
     box.replaceChildren(svg.node());
   });
 
@@ -230,7 +230,7 @@
     const svg = d3.create('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('width', '100%').attr('height', H)
       .attr('role', 'img').attr('aria-label', box.dataset.label || 'Bars');
     svg.selectAll('rect').data(vals).join('rect').attr('x', (d, i) => 18 + i * (bw + gap)).attr('y', (d) => H - 12 - y(d))
-      .attr('width', Math.max(bw, 1)).attr('height', (d) => Math.max(y(d), 1)).attr('rx', 1).style('fill', C(0));
+      .attr('width', Math.max(bw, 1)).attr('height', (d) => Math.max(y(d), 1)).attr('rx', 2).style('fill', box.dataset.color ? 'var(' + box.dataset.color + ')' : C(0));
     box.replaceChildren(svg.node());
   });
 
@@ -280,6 +280,7 @@
   function lineChart(box, o) {
     const W = Math.max(box.clientWidth, 260), H = o.height;
     const { svg, measure, show, hide } = stage(box, W, H, o.aria);
+    const col = (i) => (o.colors && o.colors[i]) || C(i);
     const all = o.series.flatMap((s) => s.pts);
     const xfmt = (d3.max(all, (d) => d.t) - d3.min(all, (d) => d.t)) / 864e5 > 150 ? d3.utcFormat('%b %Y') : fDay;
     const [lo, hi] = d3.extent(all, (d) => d.v), pad = (hi - lo || Math.abs(hi) || 1) * 0.14;
@@ -300,20 +301,20 @@
       .attr('text-anchor', 'middle').text((d) => xfmt(d));
     o.series.forEach((s, i) => {
       const g = svg.append('g');
-      if (i === 0) g.append('path').attr('d', d3.area().x((d) => x(d.t)).y0(H - m.b).y1((d) => y(d.v))(s.pts)).style('fill', C(0)).style('opacity', 0.16);
+      if (i === 0) g.append('path').attr('d', d3.area().x((d) => x(d.t)).y0(H - m.b).y1((d) => y(d.v))(s.pts)).style('fill', col(0)).style('opacity', 0.16);
       for (let k = 1; k < s.pts.length; k++) {
         const a = s.pts[k - 1], b = s.pts[k];
         const gap = o.gapDays && (b.t - a.t) / 864e5 > o.gapDays;
         g.append('line').attr('x1', x(a.t)).attr('y1', y(a.v)).attr('x2', x(b.t)).attr('y2', y(b.v))
-          .style('stroke', C(i)).attr('stroke-width', 2.5).attr('stroke-linecap', 'round')
+          .style('stroke', col(i)).attr('stroke-width', 2.5).attr('stroke-linecap', 'round')
           .attr('stroke-dasharray', gap ? '1 8' : null).style('opacity', gap ? 0.75 : 1);
       }
-      g.selectAll('circle').data(s.pts).join('circle').attr('cx', (d) => x(d.t)).attr('cy', (d) => y(d.v)).attr('r', 3).style('fill', C(i));
+      g.selectAll('circle').data(s.pts).join('circle').attr('cx', (d) => x(d.t)).attr('cy', (d) => y(d.v)).attr('r', 3).style('fill', col(i));
     });
     if (!many) {
       const top = o.series[0].pts.reduce((a, b) => (b.v > a.v ? b : a)), last = ends[0].p;
       if (top.v > last.v && x(last.t) - x(top.t) > 70) {
-        svg.append('circle').attr('cx', x(top.t)).attr('cy', y(top.v)).attr('r', 5).style('fill', C(0));
+        svg.append('circle').attr('cx', x(top.t)).attr('cy', y(top.v)).attr('r', 5).style('fill', col(0));
         svg.append('text').attr('class', 'mm-tick').attr('x', x(top.t) + (x(top.t) - m.l < 44 ? 9 : 0)).attr('y', y(top.v) - 11).attr('text-anchor', x(top.t) - m.l < 44 ? 'start' : 'middle').text('high ' + o.fmt(top.v));
       }
     }
@@ -329,7 +330,7 @@
       const near = stamps.reduce((a, b) => (Math.abs(b - t) < Math.abs(a - t) ? b : a));
       const hits = o.series.map((s, i) => ({ s, i, p: s.pts.find((p) => +p.t === near) })).filter((h) => h.p);
       hover.selectAll('circle').data(hits).join('circle').attr('cx', (h) => x(h.p.t)).attr('cy', (h) => y(h.p.v)).attr('r', 6)
-        .style('fill', (h) => C(h.i)).style('stroke', 'var(--color-panel)').attr('stroke-width', 2);
+        .style('fill', (h) => col(h.i)).style('stroke', 'var(--color-panel)').attr('stroke-width', 2);
       show([fDayY(new Date(near))].concat(hits.map((h) => (many ? h.s.label + ' ' : '') + o.fmt(h.p.v))), x(new Date(near)), d3.min(hits, (h) => y(h.p.v)));
     };
     svg.on('pointermove', point).on('pointerdown', point).on('pointerleave', () => { hide(); hover.selectAll('circle').remove(); });
@@ -339,7 +340,7 @@
     const got = rowsOf(box, ['ddr4_spot_history']);
     if (!got) return;
     lineChart(box, {
-      height: 280, gapDays: 45, aria: 'DDR4 8Gb spot price by reading date, US dollars per chip',
+      height: 280, gapDays: 45, colors: ['var(--c-ddr4)'], aria: 'DDR4 8Gb spot price by reading date, US dollars per chip',
       series: [{ label: 'spot', pts: inPeriod(got[0]).map((r) => ({ t: parse(r.date), v: r.price })) }],
       fmt: (v) => '$' + chip(v), tick: (v) => '$' + v,
     });
@@ -349,7 +350,7 @@
     const got = rowsOf(box, ['ddr5_kit_retail']);
     if (!got) return;
     lineChart(box, {
-      height: 280, aria: 'Cheapest and average listing for a 2x16GB DDR5-6000 CL30 kit, US dollars',
+      height: 280, colors: ['var(--c-kit)', 'var(--color-fg)'], aria: 'Cheapest and average listing for a 2x16GB DDR5-6000 CL30 kit, US dollars',
       series: [
         { label: 'cheapest', pts: inPeriod(got[0]).map((r) => ({ t: parse(r.date), v: r.cheapest })) },
         { label: 'average', pts: inPeriod(got[0]).map((r) => ({ t: parse(r.date), v: r.average })) },
@@ -362,7 +363,7 @@
     const got = rowsOf(box, ['gpu_index']);
     if (!got) return;
     lineChart(box, {
-      height: 220, aria: 'Median premium over launch price at Newegg by capture date, percent',
+      height: 220, colors: ['var(--c-gpu)'], aria: 'Median premium over launch price at Newegg by capture date, percent',
       series: [{ label: 'median', pts: inPeriod(got[0]).map((r) => ({ t: parse(r.date), v: r.median_premium_pct })) }],
       fmt: (v) => '+' + v.toFixed(1) + '%', tick: (v) => '+' + v + '%',
     });
@@ -411,7 +412,7 @@
     const g = svg.append('g').selectAll('g').data(rows).join('g').attr('transform', (r, i) => `translate(0,${top + i * rh})`);
     g.append('rect').attr('x', x.range()[0]).attr('y', 11).attr('width', x.range()[1] - x.range()[0]).attr('height', 18).attr('rx', 2)
       .style('fill', 'var(--color-fg)').style('opacity', 0.1);
-    g.append('rect').attr('x', (r) => x(r.low_pct)).attr('y', 11).attr('width', (r) => Math.max(x(r.high_pct) - x(r.low_pct), 4)).attr('height', 18).attr('rx', 2).style('fill', C(0));
+    g.append('rect').attr('x', (r) => x(r.low_pct)).attr('y', 11).attr('width', (r) => Math.max(x(r.high_pct) - x(r.low_pct), 4)).attr('height', 18).attr('rx', 5).style('fill', 'var(--c-contract)');
     g.append('text').attr('class', 'mm-end').attr('x', 0).attr('y', 17).text((r) => r.metric);
     g.append('text').attr('class', 'mm-tick').attr('x', 0).attr('y', 34).text((r) => 'published ' + F.date(r.published));
     g.append('text').attr('class', 'mm-end').attr('x', (r) => x(r.high_pct) + 9).attr('y', 20).attr('dy', '0.32em').text((r) => r.range_text);
@@ -429,7 +430,7 @@
     const name = (r) => (/GB$/.test(r.card) ? r.card : r.card + ' ' + r.vram);
     const pct = (r) => (r.street == null ? r.seller : F.pct1(r.premium_pct));
     const price = (r) => (r.street == null ? 'MSRP ' + money(r.msrp) : money(r.street) + ' from ' + money(r.msrp));
-    const tone = (r) => (r.brand === 'NVIDIA' ? C(0) : r.brand === 'AMD' ? C(1) : 'var(--color-fg-muted)');
+    const tone = (r) => (r.brand === 'NVIDIA' ? 'var(--c-gpu)' : r.brand === 'AMD' ? 'var(--c-amd)' : 'var(--color-fg-muted)');
     const W = Math.max(box.clientWidth, 260), narrow = W < 560, rh = narrow ? 50 : 34, H = rows.length * rh + 4;
     const { svg, measure, show, hide } = stage(box, W, H, 'Lowest new price over MSRP by graphics card, percent');
     const lw = narrow ? 0 : d3.max(rows, (r) => measure(name(r), 'mm-end')) + 16;
@@ -455,10 +456,63 @@
       .on('pointerleave', hide);
   });
 
+  // Where each figure stands inside its own range. Every bound is a value from the data.
+  function dialOf(kind) {
+    const rows = (id) => { const got = dash.data(id); return got.status === 'ok' && got.data ? got.data : null; };
+    if (kind === 'ddr5' || kind === 'nand') {
+      const board = rows(kind === 'ddr5' ? 'dram_spot' : 'nand_wafer_board');
+      const row = board && board.find((r) => r.item === (kind === 'ddr5' ? 'DDR5 16Gb (2Gx8) 4800/5600' : '512Gb TLC'));
+      return row ? { lo: row.low, hi: row.high, at: row.session_avg, note: (kind === 'ddr5' ? 'Session ' : 'Week ') + chip(row.low) + ' to ' + chip(row.high) } : null;
+    }
+    if (kind === 'ddr4' || kind === 'kit') {
+      const all = rows(kind === 'ddr4' ? 'ddr4_spot_history' : 'ddr5_kit_retail'), f = kind === 'ddr4' ? 'price' : 'cheapest';
+      if (!all || !all.length) return null;
+      const lo = d3.min(all, (r) => r[f]), hi = d3.max(all, (r) => r[f]);
+      const show = kind === 'ddr4' ? (v) => '$' + chip(v) : F.usd0;
+      return { lo, hi, at: all[all.length - 1][f], note: show(lo) + ' to ' + show(hi) + ' since ' + F.dateY(all[0].date) };
+    }
+    if (kind === 'gpu') {
+      const cards = rows('gpu_street'), mid = rows('gpu_summary');
+      const pcts = cards ? cards.filter((c) => c.premium_pct != null).map((c) => c.premium_pct) : [];
+      if (!pcts.length || !mid || !mid[0]) return null;
+      return { lo: d3.min(pcts), hi: d3.max(pcts), at: mid[0].median_premium_pct, note: 'Cards from ' + F.pct1(d3.min(pcts)) + ' to ' + F.pct1(d3.max(pcts)) };
+    }
+    const outlook = rows('trendforce_outlook'), row = outlook && outlook.find((r) => r.metric === 'PC DRAM');
+    if (!row) return null;
+    const top = d3.scaleLinear().domain([0, d3.max(outlook.filter((r) => r.kind === 'contract'), (r) => r.high_pct)]).nice(4).domain()[1];
+    return { lo: 0, hi: top, from: row.low_pct, at: row.high_pct, note: 'On a scale of 0 to +' + top + '%' };
+  }
+  dash.draw('dial', (box) => {
+    const d = dialOf(box.dataset.dial);
+    box.classList.toggle('mm-loading', !d);
+    if (!d) return box.replaceChildren();
+    const a0 = -Math.PI * 0.72, a1 = Math.PI * 0.72;
+    const arc = d3.arc().innerRadius(60).outerRadius(72).cornerRadius(6);
+    const pos = (v) => a0 + (a1 - a0) * Math.min(Math.max(d.hi > d.lo ? (v - d.lo) / (d.hi - d.lo) : 1, 0), 1);
+    const svg = d3.create('svg').attr('viewBox', '0 0 170 124').attr('width', '100%').attr('role', 'img').attr('aria-label', box.dataset.label || 'Range');
+    const g = svg.append('g').attr('transform', 'translate(85,80)');
+    g.append('path').attr('d', arc({ startAngle: a0, endAngle: a1 })).style('fill', 'var(--color-track)');
+    const from = d.from != null ? pos(d.from) : a0;
+    g.append('path').attr('d', arc({ startAngle: from, endAngle: Math.min(Math.max(pos(d.at), from + 0.14), a1) })).style('fill', 'var(' + box.dataset.color + ')');
+    box.replaceChildren(svg.node());
+  });
+  dash.draw('dial-range', (node) => {
+    const d = dialOf(node.dataset.dial);
+    node.textContent = d ? d.note : '';
+  });
+  dash.draw('status', (node) => {
+    const got = dash.data('meta');
+    if (got.status !== 'ok' || !got.data.sources) { node.textContent = ''; return; }
+    const read = got.data.sources.filter((s) => s.ok).length;
+    node.textContent = read + ' of ' + got.data.sources.length + ' sources read ' + d3.utcFormat('%b %-d, %H:%M UTC')(new Date(got.data.generated_at));
+  });
+
   // Sources named in the data, each linked once, then how the last refresh went.
   dash.draw('sources', (list) => {
     const ids = ['dram_spot', 'nand_wafer_board', 'ddr4_spot_history', 'ddr5_spot_points', 'ddr5_kit_retail', 'nand_wafer_spot', 'trendforce_outlook', 'gpu_street', 'gpu_index'];
-    const seen = new Map();
+    const seen = new Map(), meta = dash.data('meta');
+    // A page that is re-read goes by the name the refresh gives it.
+    if (meta.status === 'ok' && meta.data.sources) meta.data.sources.forEach((s) => { if (!seen.has(s.url)) seen.set(s.url, s.title); });
     ids.forEach((id) => {
       const got = dash.data(id);
       if (got.status === 'ok') got.data.forEach((r) => { if (r.source_url && !seen.has(r.source_url)) seen.set(r.source_url, r.source_name); });
@@ -487,5 +541,5 @@
     const now = dash.params().range || 'all';
     document.querySelectorAll('.mm-rbtn').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.range === now)));
   });
-  document.querySelectorAll('.mm-sw').forEach((n) => { n.style.background = C(+n.dataset.series || 0); });
+  document.querySelectorAll('.mm-sw').forEach((n) => { n.style.background = n.dataset.color ? 'var(' + n.dataset.color + ')' : C(+n.dataset.series || 0); });
 })();

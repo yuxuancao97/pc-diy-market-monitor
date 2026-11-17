@@ -25,7 +25,7 @@ export const SOURCES = [
   { id: "ddr4_spot_history", title: "Capital & Compute DDR4 spot readings", url: "https://capitalandcompute.net/memory-prices/", parse: ddr4History },
   { id: "ddr5_kit_retail", title: "Capital & Compute 32GB DDR5 kit prices", url: "https://capitalandcompute.net/memory-prices/", parse: kitRetail },
   { id: "gpu_street", title: "ComputingForGeeks graphics card prices", url: "https://computingforgeeks.com/gpu-prices/", parse: gpuStreet },
-  { id: "gpu_index", title: "TechFuelHQ GPU Price Index", url: "https://techfuelhq.com/data/gpu-price-index/", parse: gpuIndex },
+  { id: "gpu_index", title: "TechFuelHQ GPU Price Index, CC BY 4.0", url: "https://techfuelhq.com/data/gpu-price-index/", parse: gpuIndex },
 ];
 
 const load = async (name, fallback) => {
