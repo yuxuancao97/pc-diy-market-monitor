@@ -51,6 +51,11 @@ jobs:
           git add .
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "Data as read $(date -u +%Y-%m-%dT%H:%MZ)"
           git push -q -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
+      - name: Name the build
+        run: |
+          build="${GITHUB_SHA::7}"
+          sed -i "s/__BUILD__/${build}/g" site/index.html
+          printf '{"build":"%s"}\n' "$build" > site/build.json
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

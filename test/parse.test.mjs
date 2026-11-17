@@ -122,6 +122,14 @@ test("the data files hold the columns the page reads", () => {
   assert.ok(data("meta").generated_at);
 });
 
+test("the page names its build on every file it loads, and the publish run fills it in", () => {
+  const page = readFileSync(here("../site/index.html"), "utf8");
+  for (const file of ["look.css", "app.css", "runtime.js", "app.js"]) assert.ok(page.includes(`${file}?v=__BUILD__`), `${file} carries the build name`);
+  assert.ok(page.includes('<meta name="build" content="__BUILD__">'));
+  const run = readFileSync(here("../.github/workflows/refresh.yml"), "utf8");
+  assert.ok(run.includes("s/__BUILD__/") && run.includes("site/build.json"));
+});
+
 test("nothing private or secret is in the files that get published", () => {
   const banned = [/lishuangs-mac/i, /100\.110\.\d+\.\d+/, /claude\.ai\/artifact/, /private\/tmp\/claude/, /@gmail\.com/, /api[_-]?key/i];
   const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

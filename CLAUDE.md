@@ -17,6 +17,10 @@ read by anyone.
   branch, reads the source pages, saves the data back to `data`, and
   publishes `site/` to GitHub Pages. The `data` branch is written only by
   that workflow; never commit to it or merge it.
+- The publish run writes the commit's short name over `__BUILD__` in
+  `index.html` and into `build.json`. A page that finds the two differ loads
+  the newest build, and every open page asks for the data again every five
+  minutes. Keep `?v=__BUILD__` on every file `index.html` loads.
 - `site/data/trendforce_outlook.json` is not fetched. It is edited by hand
   when TrendForce publishes a new forecast, from the release itself.
 
