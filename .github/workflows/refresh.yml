@@ -1,0 +1,58 @@
+name: Refresh data and publish
+
+# Reads the source pages, keeps the result on the data branch, and publishes
+# site/ to GitHub Pages. Runs every hour, on every push to main, and by hand.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test
+        run: npm test
+      - name: Bring back the data from the last run
+        run: |
+          if git ls-remote --exit-code --heads origin data > /dev/null 2>&1; then
+            git fetch --depth 1 origin data
+            git archive FETCH_HEAD | tar -x -C site/data
+          fi
+      - name: Read the source pages
+        run: node scripts/fetch.mjs
+      - name: Keep the data for the next run
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          work=$(mktemp -d)
+          cp site/data/*.json "$work"/
+          cd "$work"
+          git init -q -b data
+          git add .
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "Data as read $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

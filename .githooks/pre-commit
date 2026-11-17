@@ -1,0 +1,33 @@
+#!/bin/bash
+# Work is committed on a task branch in its own worktree; the shared folder
+# stays on main and only takes merges (CLAUDE.md, Parallel work).
+# Active on a Mac once npm run worktree -- new has run there.
+set -uo pipefail
+
+if ! git symbolic-ref --quiet HEAD > /dev/null; then
+  echo "BLOCKED: detached HEAD. A commit here is on no branch and nobody else sees it."
+  exit 1
+fi
+
+# In the shared folder the git directory is the repository's own.
+if [ "$(git rev-parse --absolute-git-dir)" = "$(cd "$(git rev-parse --git-common-dir)" && pwd -P)" ]; then
+  branch=$(git symbolic-ref --short HEAD)
+  if [ "$branch" != "main" ]; then
+    echo "BLOCKED: the shared folder is on $branch. It stays on main; other chats branch from it."
+    echo "Move the work: npm run worktree -- new <who>/<task>"
+    exit 1
+  fi
+  if [ ! -f "$(git rev-parse --git-dir)/MERGE_HEAD" ]; then
+    echo "BLOCKED: main takes merges only. Make the change in its own worktree:"
+    echo "  npm run worktree -- new <who>/<task>"
+    exit 1
+  fi
+fi
+
+fail=0
+while IFS= read -r f; do
+  case "$f" in
+    .env|*/.env|*.pem|*.key) echo "BLOCKED: $f holds keys. This repository is public."; fail=1 ;;
+  esac
+done <<< "$(git diff --cached --name-only --diff-filter=ACM)"
+exit $fail

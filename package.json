@@ -1,0 +1,13 @@
+{
+  "name": "pc-diy-market-monitor",
+  "private": true,
+  "type": "module",
+  "description": "DRAM, NAND and graphics card prices for PC builders, re-read from public sources every hour.",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "fetch": "node scripts/fetch.mjs",
+    "serve": "node scripts/serve.mjs",
+    "worktree": "node scripts/worktree.mjs"
+  },
+  "engines": { "node": ">=20" }
+}

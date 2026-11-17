@@ -1,0 +1,26 @@
+[
+ {
+  "date": "2026-10-26",
+  "price": 16.883,
+  "weekly_change_pct": -9.19,
+  "source_name": "XenoSpectrum, citing TrendForce",
+  "source_url": "https://xenospectrum.com/en/ddr4-spot-premium-buyer-hesitation/",
+  "item": "512Gb TLC wafer spot"
+ },
+ {
+  "date": "2026-11-02",
+  "price": 16.152,
+  "weekly_change_pct": -4.33,
+  "source_name": "XenoSpectrum, citing TrendForce",
+  "source_url": "https://xenospectrum.com/en/ddr4-spot-premium-buyer-hesitation/",
+  "item": "512Gb TLC wafer spot"
+ },
+ {
+  "date": "2026-11-09",
+  "price": 14.267,
+  "weekly_change_pct": -11.67,
+  "source_name": "TrendForce",
+  "source_url": "https://www.trendforce.com/price/flash/flash_spot",
+  "item": "512Gb TLC wafer spot"
+ }
+]

@@ -1,0 +1,30 @@
+[
+ {
+  "date": "2026-11-03",
+  "price": 61.5,
+  "source_name": "Capital & Compute, citing TrendForce",
+  "source_url": "https://capitalandcompute.net/memory-prices/",
+  "item": "DDR5 16Gb (2Gx8) 4800/5600 spot"
+ },
+ {
+  "date": "2026-11-05",
+  "price": 60.667,
+  "source_name": "netz-trends.de, citing TrendForce",
+  "source_url": "https://www.netz-trends.de/us/ddr5-memory-spot-price-drops-pc-contract-prices-climb-us/",
+  "item": "DDR5 16Gb (2Gx8) 4800/5600 spot"
+ },
+ {
+  "date": "2026-11-16",
+  "price": 60.333,
+  "source_name": "Capital & Compute, citing TrendForce",
+  "source_url": "https://capitalandcompute.net/memory-prices/",
+  "item": "DDR5 16Gb (2Gx8) 4800/5600 spot"
+ },
+ {
+  "date": "2026-11-17",
+  "price": 60.333,
+  "source_name": "TrendForce",
+  "source_url": "https://www.trendforce.com/price/dram/dram_spot",
+  "item": "DDR5 16Gb (2Gx8) 4800/5600 spot"
+ }
+]
