@@ -74,30 +74,40 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); }
 
 /* Key prices: one row per price, the same thing in the same column every time. */
 .mm-keycard { padding: 8px; }
-.mm-key { width: 100%; border-collapse: separate; border-spacing: 0; }
-.mm-key th:nth-child(1) { width: 32%; }
-.mm-key th:nth-child(2) { width: 17%; }
-.mm-key th { padding: 10px 14px 8px; text-align: left; font-weight: 400; font-size: var(--size-caption); color: var(--color-fg-muted); white-space: nowrap; }
-.mm-key td { padding: 14px; vertical-align: top; border: 0; }
+.mm-key { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; }
+.mm-key th:nth-child(1) { width: 28%; }
+.mm-key th:nth-child(2) { width: 15%; }
+.mm-key th:nth-child(3) { width: 13%; }
+.mm-key th:nth-child(4) { width: 14%; }
+.mm-key th:nth-child(5) { width: 18%; }
+.mm-key th:nth-child(6) { width: 12%; }
+.mm-key th { padding: 10px 12px 8px; text-align: left; font-weight: 400; font-size: var(--size-caption); color: var(--color-fg-muted); white-space: nowrap; }
+.mm-key td { padding: 14px 12px; vertical-align: top; border: 0; }
 .mm-key tbody tr:nth-child(odd) td { background: var(--color-row); }
 .mm-key td:first-child { border-radius: 8px 0 0 8px; }
 .mm-key td:last-child { border-radius: 0 8px 8px 0; }
 .mm-plain { display: block; font-weight: 600; font-size: var(--size-heading); line-height: 1.25; }
 .mm-sub { display: block; margin-top: 2px; font-size: var(--size-caption); color: var(--color-fg-muted); font-weight: 400; }
-.mm-dir { font-weight: 700; font-size: var(--size-heading); white-space: nowrap; }
+.mm-dir { font-weight: 700; font-size: var(--size-heading); }
 .mm-now { font-weight: 700; font-size: 20px; line-height: 1.2; white-space: nowrap; }
 .mm-k-now, .mm-k-chg { white-space: nowrap; }
 .mm-k-chg .mm-move { font-size: var(--size-heading); }
-.mm-k-ctx { font-size: var(--size-caption); color: var(--color-fg-muted); min-width: 16ch; }
+.mm-k-ctx { font-size: var(--size-caption); color: var(--color-fg-muted); }
 .mm-k-ctx .mm-move { color: var(--color-fg); }
-.mm-k-trend { width: 150px; }
 .mm-spark { min-height: 40px; }
 .mm-spark svg { display: block; }
 .mm-good, .mm-k-ctx .mm-move.mm-good { color: var(--color-good); }
 .mm-bad, .mm-k-ctx .mm-move.mm-bad { color: var(--color-bad); }
 text.mm-good { fill: var(--color-good); }
 text.mm-bad { fill: var(--color-bad); }
-@container (max-width: 880px) { .mm-key .mm-k-trend { display: none; } }
+@container (max-width: 880px) {
+  .mm-key .mm-k-trend { display: none; }
+  .mm-key th:nth-child(1) { width: 30%; }
+  .mm-key th:nth-child(2) { width: 18%; }
+  .mm-key th:nth-child(3) { width: 17%; }
+  .mm-key th:nth-child(4) { width: 16%; }
+  .mm-key th:nth-child(5) { width: 19%; }
+}
 /* Narrow: each price becomes a block, name and now on top, direction and change under them. */
 @container (max-width: 640px) {
   .mm-key thead { display: none; }
@@ -106,6 +116,6 @@ text.mm-bad { fill: var(--color-bad); }
   .mm-key tbody tr:nth-child(odd) td { background: none; }
   .mm-key td { display: block; padding: 0; }
   .mm-k-dir, .mm-k-chg { text-align: right; }
-  .mm-k-ctx { grid-column: 1 / -1; min-width: 0; }
+  .mm-k-ctx { grid-column: 1 / -1; }
   .mm-k-ctx:empty { display: none; }
 }
