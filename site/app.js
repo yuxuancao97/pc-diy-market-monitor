@@ -249,8 +249,9 @@
     const { svg, measure, show, hide } = stage(box, W, H, o.aria);
     const all = series.flatMap((s) => s.pts);
     // Month ticks name the year on the first tick and on each January.
-    const long = (o.span[1] - o.span[0]) / DAY > 150;
-    const xfmt = (d, i) => (!long ? fDay(d) : i === 0 || d.getUTCMonth() === 0 ? d3.utcFormat('%b %Y')(d) : d3.utcFormat('%b')(d));
+    // Past 13 months every tick is a half year and carries its year.
+    const days = (o.span[1] - o.span[0]) / DAY, long = days > 150, years = days > 400;
+    const xfmt = (d, i) => (!long ? fDay(d) : years ? d3.utcFormat("%b '%y")(d) : i === 0 || d.getUTCMonth() === 0 ? d3.utcFormat('%b %Y')(d) : d3.utcFormat('%b')(d));
     const y = d3.scaleLinear().domain([Math.min(0, d3.min(all, (d) => d.v)), d3.max(all, (d) => d.v) * 1.12 || 1]).nice(4);
     const yt = y.ticks(4);
     const many = series.length > 1;
@@ -265,7 +266,7 @@
       .attr('dy', '0.32em').attr('text-anchor', 'end').text((d) => o.tick(d));
     // A tick whose label would touch the one before it is left out.
     let edge = -Infinity;
-    const xt = x.ticks(Math.max(3, Math.min(7, Math.floor((W - m.l - m.r) / 58)))).map((d, i) => ({ d, text: xfmt(d, i) })).filter((t) => {
+    const xt = (years ? x.ticks(d3.utcMonth.every(6)) : x.ticks(Math.max(3, Math.min(7, Math.floor((W - m.l - m.r) / 58))))).map((d, i) => ({ d, text: xfmt(d, i) })).filter((t) => {
       const half = measure(t.text, 'mm-tick') / 2;
       if (x(t.d) - half < edge + 8) return false;
       edge = x(t.d) + half;
@@ -452,7 +453,6 @@
     const hours = Math.floor((Date.now() - at) / 36e5);
     const ago = hours < 1 ? 'under an hour ago' : hours === 1 ? '1 hour ago' : hours < 48 ? hours + ' hours ago' : Math.floor(hours / 24) + ' days ago';
     node.textContent = read + ' of ' + got.data.sources.length + ' sources read ' + d3.utcFormat('%b %-d, %H:%M UTC')(at) + ', ' + ago;
-    node.classList.toggle('mm-bad', hours >= 6);
   });
 
   // Sources named in the data, each linked once, then how the last refresh
@@ -491,6 +491,8 @@
 
   document.querySelectorAll('.mm').forEach((n) => n.style.setProperty('--mm-accent', C(0)));
   document.querySelectorAll('.mm-rbtn').forEach((b) => b.addEventListener('click', () => dash.setParams({ range: b.dataset.range })));
+  // A chart inside a closed section has no width to measure, so it is drawn again when the section opens.
+  document.querySelectorAll('details').forEach((d) => d.addEventListener('toggle', () => dash.setParams({})));
   dash.onData(() => {
     const now = dash.params().range;
     document.querySelectorAll('.mm-rbtn').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.range === now)));
