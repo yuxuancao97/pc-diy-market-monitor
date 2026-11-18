@@ -2,7 +2,7 @@
 // calculations that depend on them, and redraws when data, the chart period
 // or the window width changes.
 (() => {
-  const FILES = ["dram_spot", "nand_wafer_board", "spot_history", "ddr5_kit_retail", "trendforce_outlook", "gpu_history", "gpu_index", "meta"];
+  const FILES = ["dram_spot", "nand_wafer_board", "spot_history", "ddr5_kit_retail", "kit_sizes", "trendforce_outlook", "gpu_history", "gpu_index", "meta"];
   const store = {}, state = {}, calcs = {}, draws = [], watchers = [], made = new WeakMap();
   const params = { range: "1y" };
   FILES.forEach((id) => { state[id] = "loading"; });

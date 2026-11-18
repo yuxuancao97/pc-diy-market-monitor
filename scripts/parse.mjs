@@ -91,6 +91,27 @@ export function kitRetail(html, url) {
   }).sort(byDate);
 }
 
+// Capital & Compute: the table headed "Kit", "Price", "Per GB", shop prices
+// by capacity. A cell is one price or a range, "$429 to $600". The table
+// prints no date.
+export function kitSizes(html, url) {
+  const table = tables(html).find((t) => t.head[0] === "Kit" && t.head[1] === "Price" && t.head[2] === "Per GB");
+  if (!table || table.rows.length < 2) throw new Error("The kit capacity table was not found");
+  const range = (cell) => {
+    const parts = cell.split(" to ").map(dollars);
+    return parts.length <= 2 && parts.every((n) => n != null) ? [parts[0], parts[parts.length - 1]] : null;
+  };
+  return table.rows.map((cells) => {
+    const name = cells[0].match(/^(\d+)GB (DDR\d) \(.+\)$/), price = range(cells[1]), per = range(cells[2]);
+    if (!name || !price || !per) throw new Error(`Unreadable kit capacity row: ${cells.join(" | ")}`);
+    return {
+      kit: cells[0], capacity_gb: Number(name[1]), type: name[2],
+      price_low: price[0], price_high: price[1], per_gb_low: per[0], per_gb_high: per[1],
+      source_name: "Capital & Compute, retail prices by capacity", source_url: url,
+    };
+  });
+}
+
 // TechFuelHQ: the table of published index rows.
 export function gpuIndex(html, url) {
   const table = tables(html).find((t) => t.head[0] === "UTC date" && /^Median premium/.test(t.head[2] || ""));

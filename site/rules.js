@@ -92,15 +92,18 @@
   // Within 2% of the high is at it; 10% or more below is past its peak.
   // A fall is faster when more than half of the three-month fall came in the
   // last month. A price at its high that rose 3% or more in three months and
-  // is now steady has stalled.
-  function cycle(belowPct, monthPct, quarterPct) {
+  // is now steady has stalled. A price at its high that rose over the month
+  // but not over the last week is holding, not climbing.
+  function cycle(belowPct, monthPct, quarterPct, weekPct = null) {
     const at = belowPct >= -2, past = belowPct <= -10;
     const move = monthPct == null ? null : direction(monthPct);
+    // A month's rise that has stopped: the price is at its high and has not risen in the last week.
+    const paused = weekPct != null && direction(weekPct) !== "Rising";
     const tone = monthPct == null ? "" : meaning(monthPct);
     const faster = quarterPct != null && quarterPct < 0 && monthPct < quarterPct / 2;
     let text;
     if (move === null) text = at ? "At its high" : past ? "Past its peak" : "Below its high";
-    else if (at) text = move === "Rising" ? "Still climbing" : move === "Falling" ? "Turning down from its high" : quarterPct != null && quarterPct >= 3 ? "Stalled at its high" : "Holding at its high";
+    else if (at) text = move === "Rising" ? (paused ? "Up this month, now holding at its high" : "Still climbing") : move === "Falling" ? "Turning down from its high" : quarterPct != null && quarterPct >= 3 ? "Stalled at its high" : "Holding at its high";
     else if (past) text = move === "Falling" ? (faster ? "Past its peak and falling faster" : "Past its peak and falling") : move === "Rising" ? "Past its peak, rising again" : "Past its peak, holding";
     else text = move === "Rising" ? "Climbing back toward its high" : move === "Falling" ? "Coming off its high" : "Holding below its high";
     return { text, tone };
@@ -114,6 +117,16 @@
     if (!both.length) return null;
     const on = (r) => ({ date: r.date, ddr4: r.value / 8, ddr5: five.get(r.date) / 16, pct: change(r.value / 8, five.get(r.date) / 16) });
     return { now: on(both[both.length - 1]), first: on(both[0]) };
+  }
+
+  // The same capacity in DDR4 and DDR5 at shop prices, from rows of
+  // { capacity_gb, type, price_low, price_high }. One is cheaper only when
+  // its whole range lies below the other's.
+  function kitGap(sizes, capacity) {
+    const of = (type) => sizes.find((r) => r.capacity_gb === capacity && r.type === type);
+    const ddr4 = of("DDR4"), ddr5 = of("DDR5");
+    if (!ddr4 || !ddr5) return null;
+    return { capacity, ddr4, ddr5, cheaper: ddr4.price_high < ddr5.price_low ? "DDR4" : ddr5.price_high < ddr4.price_low ? "DDR5" : null };
   }
 
   // Where the premium on graphics cards sits, from one day's current cards
@@ -143,5 +156,5 @@
     return { now, then, more: now.total - then.total, pct: change(now.total, then.total) };
   }
 
-  root.mmRules = { direction, meaning, PERIODS, back, change, periods, median, cardStats, high, cycle, gigabit, cardSplit, basket };
+  root.mmRules = { direction, meaning, PERIODS, back, change, periods, median, cardStats, high, cycle, gigabit, kitGap, cardSplit, basket };
 })(typeof window !== "undefined" ? window : globalThis);

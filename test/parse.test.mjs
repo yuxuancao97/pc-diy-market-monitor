@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { tables, text, trendforce, kitRetail, gpuTracker, gpuIndex, boardArchive, boardReading, unionReadings, BOARD_ITEMS } from "../scripts/parse.mjs";
+import { tables, text, trendforce, kitRetail, kitSizes, gpuTracker, gpuIndex, boardArchive, boardReading, unionReadings, BOARD_ITEMS } from "../scripts/parse.mjs";
 
 const here = (path) => fileURLToPath(new URL(path, import.meta.url));
 const fixture = (id) => readFileSync(here(`fixtures/${id}.html`), "utf8");
@@ -50,6 +50,15 @@ test("kit prices carry cheapest and average", () => {
   const rows = kitRetail(fixture("ddr5_kit_retail"), "u");
   assert.equal(rows.length, 16);
   assert.deepEqual([rows.at(-1).date, rows.at(-1).cheapest, rows.at(-1).average], ["2026-11-16", 429, 622]);
+});
+
+test("shop prices by capacity keep a single price or a range as printed", () => {
+  const rows = kitSizes(fixture("ddr5_kit_retail"), "u");
+  assert.equal(rows.length, 6);
+  const of = (kit) => rows.find((r) => r.kit === kit);
+  assert.deepEqual([of("32GB DDR4 (2x16GB)").price_low, of("32GB DDR4 (2x16GB)").price_high, of("32GB DDR4 (2x16GB)").per_gb_low, of("32GB DDR4 (2x16GB)").per_gb_high], [129, 257, 4.03, 8.03]);
+  assert.deepEqual([of("16GB DDR5 (2x8GB)").price_low, of("16GB DDR5 (2x8GB)").price_high, of("16GB DDR5 (2x8GB)").type, of("16GB DDR5 (2x8GB)").capacity_gb], [297, 297, "DDR5", 16]);
+  assert.throws(() => kitSizes(EMPTY, "u"));
 });
 
 test("the card tracker keeps names, prices and missing stock exactly", () => {
@@ -133,7 +142,7 @@ test("a run adds today's readings to the archive and to what earlier runs kept",
   assert.equal(spot.filter((r) => r.date === "2026-11-17").length, 7);
   const cards = JSON.parse(readFileSync(join(dir, "gpu_history.json"), "utf8"));
   assert.equal(cards.length, 36);
-  assert.equal(JSON.parse(readFileSync(join(dir, "meta.json"), "utf8")).sources.filter((s) => s.ok).length, 5);
+  assert.equal(JSON.parse(readFileSync(join(dir, "meta.json"), "utf8")).sources.filter((s) => s.ok).length, 6);
   assert.equal(existsSync(join(dir, "gpu_street.json")), false, "a retired file is removed");
   assert.equal(existsSync(join(dir, "gpu_cards.json")), false, "the card page is kept only as history");
 });
@@ -155,6 +164,7 @@ test("the data files hold the columns the page reads", () => {
     spot_archive: ["series", "item", "board", "date", "price", "captured"],
     spot_history: ["series", "item", "board", "date", "price"],
     ddr5_kit_retail: ["date", "cheapest", "average"],
+    kit_sizes: ["kit", "capacity_gb", "type", "price_low", "price_high", "per_gb_low", "per_gb_high"],
     trendforce_outlook: ["metric", "kind", "period", "low_pct", "high_pct", "range_text", "published"],
     gpu_archive: ["series", "card", "brand", "current", "msrp", "price", "lowest_ever", "date", "captured"],
     gpu_history: ["series", "card", "brand", "current", "msrp", "price", "lowest_ever", "date"],
@@ -238,6 +248,9 @@ test("a verdict places a price in its cycle from its distance below the high and
   assert.deepEqual(cycle(-2, 0.2, 1.5), { text: "Holding at its high", tone: "" });
   assert.deepEqual(cycle(0, 0, null), { text: "Holding at its high", tone: "" });
   assert.deepEqual(cycle(0, 8.3, null), { text: "Still climbing", tone: "bad" });
+  assert.deepEqual(cycle(0, 8.3, null, 0), { text: "Up this month, now holding at its high", tone: "bad" });
+  assert.deepEqual(cycle(-1, 8.3, 25, -0.4), { text: "Up this month, now holding at its high", tone: "bad" });
+  assert.deepEqual(cycle(0, 8.3, 25, 2.1), { text: "Still climbing", tone: "bad" });
   assert.deepEqual(cycle(-1.5, -1.2, 4), { text: "Turning down from its high", tone: "good" });
   assert.deepEqual(cycle(-2.1, 0.5, 6), { text: "Holding below its high", tone: "" });
   assert.deepEqual(cycle(-6.1, -3.7, 2.2), { text: "Coming off its high", tone: "good" });
@@ -259,6 +272,15 @@ test("DDR4 is set against DDR5 by the gigabit, on the latest and the first day b
   assert.deepEqual(got.now, { date: "2026-11-17", ddr4: 44.25 / 8, ddr5: 60.333 / 16, pct: 46.7 });
   assert.deepEqual([got.first.date, got.first.pct], ["2024-12-31", -37.5]);
   assert.equal(gigabit([{ date: "2026-11-17", value: 1 }], [{ date: "2026-11-18", value: 1 }]), null);
+});
+
+test("DDR4 and DDR5 kits of one capacity are compared in shops, and one is cheaper only when the ranges do not overlap", async () => {
+  const { kitGap } = await rules();
+  const row = (capacity_gb, type, price_low, price_high) => ({ capacity_gb, type, price_low, price_high });
+  assert.equal(kitGap([row(32, "DDR4", 129, 257), row(32, "DDR5", 429, 600), row(16, "DDR5", 297, 297)], 32).cheaper, "DDR4");
+  assert.equal(kitGap([row(32, "DDR4", 500, 700), row(32, "DDR5", 429, 600)], 32).cheaper, null);
+  assert.equal(kitGap([row(32, "DDR4", 700, 800), row(32, "DDR5", 429, 600)], 32).cheaper, "DDR5");
+  assert.equal(kitGap([row(32, "DDR5", 429, 600)], 32), null);
 });
 
 test("the graphics card premium is split by launch price and by memory size", async () => {

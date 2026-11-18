@@ -1372,5 +1372,12 @@
 {"series":"DDR4 8Gb (1Gx8) 3200","item":"DDR4 8Gb (1Gx8) 3200","board":"DRAM spot","date":"2026-11-17","price":44.25,"source_name":"TrendForce","source_url":"https://www.trendforce.com/price/dram/dram_spot"},
 {"series":"DDR4 8Gb (1Gx8) eTT","item":"DDR4 8Gb (1Gx8) eTT","board":"DRAM spot","date":"2026-11-17","price":5.56,"source_name":"TrendForce","source_url":"https://www.trendforce.com/price/dram/dram_spot"},
 {"series":"DDR5 16Gb (2Gx8) 4800/5600","item":"DDR5 16Gb (2Gx8) 4800/5600","board":"DRAM spot","date":"2026-11-17","price":60.333,"source_name":"TrendForce","source_url":"https://www.trendforce.com/price/dram/dram_spot"},
-{"series":"DDR5 16Gb (2Gx8) eTT","item":"DDR5 16Gb (2Gx8) eTT","board":"DRAM spot","date":"2026-11-17","price":30.7,"source_name":"TrendForce","source_url":"https://www.trendforce.com/price/dram/dram_spot"}
+{"series":"DDR5 16Gb (2Gx8) eTT","item":"DDR5 16Gb (2Gx8) eTT","board":"DRAM spot","date":"2026-11-17","price":30.7,"source_name":"TrendForce","source_url":"https://www.trendforce.com/price/dram/dram_spot"},
+{"series":"DDR3 4Gb 512Mx8 1600/1866","item":"DDR3 4Gb 512Mx8 1600/1866","board":"DRAM spot","date":"2026-11-18","price":13.806,"source_name":"TrendForce","source_url":"https://www.trendforce.com/price/dram/dram_spot"},
+{"series":"DDR4 16Gb (2Gx8) 3200","item":"DDR4 16Gb (2Gx8) 3200","board":"DRAM spot","date":"2026-11-18","price":78.95,"source_name":"TrendForce","source_url":"https://www.trendforce.com/price/dram/dram_spot"},
+{"series":"DDR4 16Gb (2Gx8) eTT","item":"DDR4 16Gb (2Gx8) eTT","board":"DRAM spot","date":"2026-11-18","price":12.75,"source_name":"TrendForce","source_url":"https://www.trendforce.com/price/dram/dram_spot"},
+{"series":"DDR4 8Gb (1Gx8) 3200","item":"DDR4 8Gb (1Gx8) 3200","board":"DRAM spot","date":"2026-11-18","price":44.207,"source_name":"TrendForce","source_url":"https://www.trendforce.com/price/dram/dram_spot"},
+{"series":"DDR4 8Gb (1Gx8) eTT","item":"DDR4 8Gb (1Gx8) eTT","board":"DRAM spot","date":"2026-11-18","price":5.53,"source_name":"TrendForce","source_url":"https://www.trendforce.com/price/dram/dram_spot"},
+{"series":"DDR5 16Gb (2Gx8) 4800/5600","item":"DDR5 16Gb (2Gx8) 4800/5600","board":"DRAM spot","date":"2026-11-18","price":60.333,"source_name":"TrendForce","source_url":"https://www.trendforce.com/price/dram/dram_spot"},
+{"series":"DDR5 16Gb (2Gx8) eTT","item":"DDR5 16Gb (2Gx8) eTT","board":"DRAM spot","date":"2026-11-18","price":30.7,"source_name":"TrendForce","source_url":"https://www.trendforce.com/price/dram/dram_spot"}
 ]
