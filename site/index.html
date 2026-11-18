@@ -20,123 +20,49 @@
     </div>
   </header>
 
+  <section class="mm-sec" id="health">
+    <div class="mm-sechead">
+      <h2 class="mm-h2">Market health</h2>
+      <p class="mm-muted">Where each price stands against a year ago, and which way it moved this month. Green is cheaper for builders, red is dearer.</p>
+    </div>
+    <div class="mm-health mm-loading" data-draw="health"></div>
+  </section>
+
   <section class="mm-sec" id="key-prices">
     <div class="mm-sechead">
       <h2 class="mm-h2">Key prices</h2>
-      <p class="mm-muted">Green is cheaper for builders, red is dearer.</p>
+      <p class="mm-muted">Change against the reading nearest to each period earlier.</p>
     </div>
     <div class="mm-card mm-keycard">
       <table class="mm-key">
         <thead>
-          <tr><th>Price</th><th>Direction</th><th>Now</th><th>Change</th><th>Context</th><th class="mm-k-trend">Trend</th></tr>
+          <tr><th>Price</th><th>Now</th><th>1 week</th><th>1 month</th><th>3 months</th><th>1 year</th><th class="mm-k-trend">Past year</th></tr>
         </thead>
-        <tbody>
-          <tr id="row-ddr5">
-            <td class="mm-k-name"><span class="mm-plain">DDR5 memory chips</span><span class="mm-sub">DDR5 16Gb (2Gx8) 4800/5600, spot</span></td>
-            <td class="mm-k-dir"><span class="mm-dir mm-loading" data-draw="dir" data-source="ddr5_summary" data-field="change_first_pct"></span></td>
-            <td class="mm-k-now"><span class="mm-v mm-now mm-loading" data-draw="val" data-source="ddr5_summary" data-field="latest" data-row="0" data-fmt="usd3"></span><span class="mm-sub"><span class="mm-v mm-loading" data-draw="val" data-source="ddr5_summary" data-field="latest_date" data-row="0" data-fmt="date"></span></span></td>
-            <td class="mm-k-chg"><span class="mm-v mm-move mm-loading" data-draw="val" data-source="ddr5_summary" data-field="change_first_pct" data-row="0" data-tone="price" data-fmt="pct1"></span><span class="mm-sub">since <span class="mm-v mm-loading" data-draw="val" data-source="ddr5_summary" data-field="first_date" data-row="0" data-fmt="date"></span></span></td>
-            <td class="mm-k-ctx"></td>
-            <td class="mm-k-trend"><div class="mm-spark mm-loading" data-draw="spark" data-source="ddr5_spot_points" data-field="price" data-label="DDR5 16Gb spot readings"></div></td>
-          </tr>
-          <tr id="row-ddr4">
-            <td class="mm-k-name"><span class="mm-plain">DDR4 memory chips</span><span class="mm-sub">DDR4 8Gb (1Gx8) 3200, spot</span></td>
-            <td class="mm-k-dir"><span class="mm-dir mm-loading" data-draw="dir" data-source="ddr4_summary" data-field="change_prev_pct"></span></td>
-            <td class="mm-k-now"><span class="mm-v mm-now mm-loading" data-draw="val" data-source="ddr4_summary" data-field="latest" data-row="0" data-fmt="usd3"></span><span class="mm-sub"><span class="mm-v mm-loading" data-draw="val" data-source="ddr4_summary" data-field="latest_date" data-row="0" data-fmt="date"></span></span></td>
-            <td class="mm-k-chg"><span class="mm-v mm-move mm-loading" data-draw="val" data-source="ddr4_summary" data-field="change_prev_pct" data-row="0" data-tone="price" data-fmt="pct1"></span><span class="mm-sub">since <span class="mm-v mm-loading" data-draw="val" data-source="ddr4_summary" data-field="prev_date" data-row="0" data-fmt="date"></span></span></td>
-            <td class="mm-k-ctx"><span class="mm-v mm-move mm-loading" data-draw="val" data-source="ddr4_summary" data-field="change_first_pct" data-row="0" data-tone="price" data-fmt="pct1"></span> since <span class="mm-v mm-loading" data-draw="val" data-source="ddr4_summary" data-field="first_date" data-row="0" data-fmt="dateY"></span></td>
-            <td class="mm-k-trend"><div class="mm-spark mm-loading" data-draw="spark" data-source="ddr4_spot_history" data-field="price" data-label="DDR4 8Gb spot readings"></div></td>
-          </tr>
-          <tr id="row-kit">
-            <td class="mm-k-name"><span class="mm-plain">32GB DDR5 kit in shops</span><span class="mm-sub">2x16GB DDR5-6000 CL30, cheapest listing</span></td>
-            <td class="mm-k-dir"><span class="mm-dir mm-loading" data-draw="dir" data-source="kit_summary" data-field="change_month_pct"></span></td>
-            <td class="mm-k-now"><span class="mm-v mm-now mm-loading" data-draw="val" data-source="kit_summary" data-field="cheapest" data-row="0" data-fmt="usd0"></span><span class="mm-sub"><span class="mm-v mm-loading" data-draw="val" data-source="kit_summary" data-field="latest_date" data-row="0" data-fmt="date"></span></span></td>
-            <td class="mm-k-chg"><span class="mm-v mm-move mm-loading" data-draw="val" data-source="kit_summary" data-field="change_month_pct" data-row="0" data-tone="price" data-fmt="pct1"></span><span class="mm-sub">since <span class="mm-v mm-loading" data-draw="val" data-source="kit_summary" data-field="month_date" data-row="0" data-fmt="date"></span></span></td>
-            <td class="mm-k-ctx"><span class="mm-v mm-move mm-loading" data-draw="val" data-source="kit_summary" data-field="multiple_year" data-row="0" data-fmt="x1"></span> times its <span class="mm-v mm-loading" data-draw="val" data-source="kit_summary" data-field="year_date" data-row="0" data-fmt="dateY"></span> price</td>
-            <td class="mm-k-trend"><div class="mm-spark mm-loading" data-draw="spark" data-source="ddr5_kit_retail" data-field="cheapest" data-label="Cheapest 32GB DDR5 kit readings"></div></td>
-          </tr>
-          <tr id="row-nand">
-            <td class="mm-k-name"><span class="mm-plain">SSD flash wafers</span><span class="mm-sub">512Gb TLC NAND wafer, spot</span></td>
-            <td class="mm-k-dir"><span class="mm-dir mm-loading" data-draw="dir" data-source="nand_summary" data-field="weekly_change_pct"></span></td>
-            <td class="mm-k-now"><span class="mm-v mm-now mm-loading" data-draw="val" data-source="nand_summary" data-field="latest" data-row="0" data-fmt="usd3"></span><span class="mm-sub"><span class="mm-v mm-loading" data-draw="val" data-source="nand_summary" data-field="latest_date" data-row="0" data-fmt="date"></span></span></td>
-            <td class="mm-k-chg"><span class="mm-v mm-move mm-loading" data-draw="val" data-source="nand_summary" data-field="weekly_change_pct" data-row="0" data-tone="price" data-fmt="pct2"></span><span class="mm-sub">on the week</span></td>
-            <td class="mm-k-ctx"><span class="mm-v mm-move mm-loading" data-draw="val" data-source="nand_window" data-field="change_pct" data-row="0" data-tone="price" data-fmt="pct1"></span> since <span class="mm-v mm-loading" data-draw="val" data-source="nand_window" data-field="from_date" data-row="0" data-fmt="date"></span></td>
-            <td class="mm-k-trend"><div class="mm-spark mm-loading" data-draw="spark" data-source="nand_wafer_spot" data-field="price" data-label="512Gb TLC wafer spot readings"></div></td>
-          </tr>
-          <tr id="row-gpu">
-            <td class="mm-k-name"><span class="mm-plain">Graphics cards</span><span class="mm-sub">Median over MSRP, lowest new, Amazon US</span></td>
-            <td class="mm-k-dir"><span class="mm-dir mm-loading" data-draw="dir" data-kind="level" data-up="Above MSRP" data-down="Below MSRP" data-flat="At MSRP" data-source="gpu_summary" data-field="median_premium_pct"></span></td>
-            <td class="mm-k-now"><span class="mm-v mm-now mm-loading" data-draw="val" data-source="gpu_summary" data-field="median_premium_pct" data-row="0" data-fmt="pct1"></span><span class="mm-sub"><span class="mm-v mm-loading" data-draw="val" data-source="gpu_summary" data-field="observed" data-row="0" data-fmt="date"></span></span></td>
-            <td class="mm-k-chg"><span class="mm-sub">against MSRP</span></td>
-            <td class="mm-k-ctx">From <span class="mm-v mm-loading" data-draw="val" data-source="gpu_summary" data-field="lowest_pct" data-row="0" data-fmt="pct1"></span> to <span class="mm-v mm-loading" data-draw="val" data-source="gpu_summary" data-field="highest_pct" data-row="0" data-fmt="pct1"></span> across <span class="mm-v mm-loading" data-draw="val" data-source="gpu_summary" data-field="priced" data-row="0" data-fmt="int"></span> cards</td>
-            <td class="mm-k-trend"></td>
-          </tr>
-          <tr id="row-contract">
-            <td class="mm-k-name"><span class="mm-plain">Memory contracts next quarter</span><span class="mm-sub">PC DRAM contract, <span class="mm-v mm-loading" data-draw="val" data-source="trendforce_outlook" data-field="period" data-where="metric=PC DRAM" data-fmt="text"></span> forecast, TrendForce</span></td>
-            <td class="mm-k-dir"><span class="mm-dir mm-loading" data-draw="dir" data-kind="level" data-up="Forecast to rise" data-down="Forecast to fall" data-flat="Forecast flat" data-source="trendforce_outlook" data-where="metric=PC DRAM" data-field="low_pct"></span></td>
-            <td class="mm-k-now"><span class="mm-v mm-now mm-loading" data-draw="val" data-source="trendforce_outlook" data-field="range_text" data-where="metric=PC DRAM" data-fmt="text"></span><span class="mm-sub"><span class="mm-v mm-loading" data-draw="val" data-source="trendforce_outlook" data-field="published" data-where="metric=PC DRAM" data-fmt="date"></span></span></td>
-            <td class="mm-k-chg"><span class="mm-sub">on the quarter before</span></td>
-            <td class="mm-k-ctx"></td>
-            <td class="mm-k-trend"></td>
-          </tr>
-        </tbody>
+        <tbody data-draw="key"></tbody>
       </table>
     </div>
   </section>
 
-  <div class="mm-range" id="period" role="group" aria-label="Chart period">
-    <span class="mm-label">Chart period</span>
-    <span class="mm-rset">
-      <button type="button" class="mm-rbtn" data-range="1m" aria-pressed="false">1M</button>
-      <button type="button" class="mm-rbtn" data-range="3m" aria-pressed="false">3M</button>
-      <button type="button" class="mm-rbtn" data-range="6m" aria-pressed="false">6M</button>
-      <button type="button" class="mm-rbtn" data-range="1y" aria-pressed="false">1Y</button>
-      <button type="button" class="mm-rbtn" data-range="all" aria-pressed="true">All</button>
-    </span>
-  </div>
-
-  <section class="mm-sec" id="memory">
-    <div class="mm-sechead">
-      <h2 class="mm-h2">Memory</h2>
-      <p class="mm-muted">Spot is the open-market price for immediate delivery. Contract is the price large buyers settle with suppliers each quarter. Retail is what a builder pays.</p>
-    </div>
-    <div class="mm-grid">
-      <div class="mm-card" id="ddr4-trend">
-        <h3 class="mm-h3">DDR4 8Gb spot price</h3>
-        <p class="mm-muted">US$ per chip. <span class="mm-v mm-loading" data-draw="val" data-source="ddr4_window" data-field="change_pct" data-row="0" data-fmt="pct1"></span> since <span class="mm-v mm-loading" data-draw="val" data-source="ddr4_window" data-field="from_date" data-row="0" data-fmt="dateY"></span>.</p>
-        <div class="mm-chart mm-loading" data-draw="ddr4-chart" data-source="ddr4_spot_history"></div>
-      </div>
-      <div class="mm-card" id="kit-trend">
-        <h3 class="mm-h3">32GB DDR5 kit at retail</h3>
-        <p class="mm-muted">2x16GB DDR5-6000 CL30, US$ per kit. Average listing <span class="mm-v mm-loading" data-draw="val" data-source="kit_summary" data-field="average" data-row="0" data-fmt="usd0"></span>.</p>
-        <p class="mm-legend"><span class="mm-legend-key"><span class="mm-sw" data-color="--series-1"></span>Cheapest listing</span><span class="mm-legend-key"><span class="mm-sw" data-color="--series-2"></span>Average listing</span></p>
-        <div class="mm-chart mm-loading" data-draw="kit-chart" data-source="ddr5_kit_retail"></div>
+  <section class="mm-sec" id="history">
+    <div class="mm-sechead mm-sechead-row">
+      <h2 class="mm-h2">Price history</h2>
+      <div class="mm-range" id="period" role="group" aria-label="Period for every chart">
+        <span class="mm-rset">
+          <button type="button" class="mm-rbtn" data-range="1m" aria-pressed="false">1M</button>
+          <button type="button" class="mm-rbtn" data-range="3m" aria-pressed="false">3M</button>
+          <button type="button" class="mm-rbtn" data-range="6m" aria-pressed="false">6M</button>
+          <button type="button" class="mm-rbtn" data-range="1y" aria-pressed="true">1Y</button>
+          <button type="button" class="mm-rbtn" data-range="all" aria-pressed="false">All</button>
+        </span>
       </div>
     </div>
-    <div class="mm-card" id="spot-board">
-      <h3 class="mm-h3">TrendForce spot boards</h3>
-      <div class="mm-scroll">
-        <table class="mm-table" data-source="spot_boards" data-row-key="item">
-          <thead>
-            <tr>
-              <th data-field="item">Item</th>
-              <th class="mm-col-board" data-field="board">Board</th>
-              <th class="mm-r" data-field="session_avg">Average</th>
-              <th class="mm-r" data-field="change_pct">Change</th>
-              <th>Low to high</th>
-              <th class="mm-r mm-last" data-field="as_of">As of</th>
-            </tr>
-          </thead>
-          <tbody data-draw="board"></tbody>
-        </table>
-      </div>
-    </div>
+    <div class="mm-grid mm-grid-3 mm-loading" data-draw="history"></div>
   </section>
 
   <section class="mm-sec" id="contracts">
     <div class="mm-sechead">
       <h2 class="mm-h2">Contract price forecasts</h2>
-      <p class="mm-muted">TrendForce, change on the quarter before.</p>
+      <p class="mm-muted">TrendForce, change on the quarter before. Contract is the price large buyers settle with suppliers each quarter.</p>
     </div>
     <div class="mm-card" id="outlook">
       <div class="mm-chart-rows mm-loading" data-draw="outlook" data-source="trendforce_outlook"></div>
@@ -150,31 +76,56 @@
     </div>
     <div class="mm-grid mm-grid-wide">
       <div class="mm-card" id="gpu-premium">
-        <h3 class="mm-h3">Lowest new price over MSRP</h3>
-        <p class="mm-muted">Amazon US on <span class="mm-v mm-loading" data-draw="val" data-source="gpu_summary" data-field="observed" data-row="0" data-fmt="dateY"></span>.</p>
-        <div class="mm-chart-rows mm-loading" data-draw="gpu-bars" data-source="gpu_street"></div>
+        <h3 class="mm-h3">Best US price over MSRP</h3>
+        <p class="mm-muted">Tom's Hardware tracker on <span class="mm-v mm-loading" data-draw="val" data-source="gpu_latest" data-field="date" data-row="0" data-fmt="dateY"></span>.</p>
+        <div class="mm-chart-rows mm-loading" data-draw="gpu-bars" data-gen="current"></div>
+        <details class="mm-more">
+          <summary>Earlier generations</summary>
+          <div class="mm-chart-rows" data-draw="gpu-bars" data-gen="earlier"></div>
+        </details>
       </div>
       <div class="mm-card" id="gpu-index">
-        <h3 class="mm-h3">Median premium at Newegg</h3>
-        <p class="mm-muted">Cheapest qualifying offer over launch price across <span class="mm-v mm-loading" data-draw="val" data-source="gpu_index_latest" data-field="cards_tracked" data-row="0" data-fmt="int"></span> tracked cards. Last capture <span class="mm-v mm-loading" data-draw="val" data-source="gpu_index_latest" data-field="date" data-row="0" data-fmt="dateY"></span>, <span class="mm-v mm-loading" data-draw="val" data-source="gpu_index_latest" data-field="date" data-row="0" data-fmt="age"></span>.</p>
+        <h3 class="mm-h3">A second measure: Newegg only</h3>
+        <p class="mm-muted">Median premium over launch price across <span class="mm-v mm-loading" data-draw="val" data-source="gpu_index_latest" data-field="cards_tracked" data-row="0" data-fmt="int"></span> cards at one shop. Last capture <span class="mm-v mm-loading" data-draw="val" data-source="gpu_index_latest" data-field="date" data-row="0" data-fmt="dateY"></span>, <span class="mm-v mm-loading" data-draw="val" data-source="gpu_index_latest" data-field="date" data-row="0" data-fmt="age"></span>.</p>
         <div class="mm-chart-short mm-loading" data-draw="index-chart" data-source="gpu_index"></div>
       </div>
     </div>
   </section>
 
+  <details class="mm-notes" id="spot-board">
+    <summary>Today's spot boards, every item</summary>
+    <div class="mm-card">
+      <div class="mm-scroll">
+        <table class="mm-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th class="mm-col-board">Board</th>
+              <th class="mm-r">Average</th>
+              <th class="mm-r">Change</th>
+              <th>Low to high</th>
+              <th class="mm-r mm-last">As of</th>
+            </tr>
+          </thead>
+          <tbody data-draw="board"></tbody>
+        </table>
+      </div>
+    </div>
+  </details>
+
   <details class="mm-notes" id="notes">
     <summary>How to read these numbers</summary>
     <ul>
-      <li>Direction reads Falling or Rising when the change shown beside it is 1% or more, and Steady when it is less. Graphics cards and contracts have no earlier reading here, so their direction is the level itself.</li>
-      <li>Green and red say what a move means for someone building a PC. They are not a forecast.</li>
-      <li>The spot boards, the DDR4 line, kit prices and graphics card prices are re-read from their source pages every hour. The DDR5 and NAND trend lines gain a reading each time TrendForce updates its board. The forecasts are saved readings from TrendForce press releases.</li>
-      <li>TrendForce prints its spot boards without a currency. Outlets quoting the same boards report US dollars per chip, and this page follows them.</li>
-      <li>The DDR4 line is Capital &amp; Compute's log of TrendForce and DRAMeXchange readings. A stretch of more than 45 days with no free reading is drawn dotted.</li>
-      <li>The saved DDR5 16Gb readings come from TrendForce and two publishers quoting its board on other days.</li>
+      <li>A verdict has two halves. The first compares the price with the same price a year ago: Far above is double or more, Well above is 25% or more, Above is 5% or more. For graphics cards the comparison is with launch prices. The second half is the change over the last month.</li>
+      <li>A change of 1% or more reads Rising or Falling, and less reads Steady. Green and red say what a move means for someone building a PC. They are not a forecast.</li>
+      <li>Each period compares the latest reading with the one nearest to that many days earlier. It reads No reading when none lies within 3 days for a week, 10 for a month, 15 for three months or 31 for a year. Hold the pointer over a figure for the earlier price and its date.</li>
+      <li>Spot is the open-market price for immediate delivery. Retail is what a builder pays.</li>
+      <li>Spot prices before this page began reading the boards come from copies of the same DRAMeXchange board kept by the Internet Archive. A copy holds whichever session was on the board when it was taken, and days without a copy are gaps. A gap of more than 45 days is drawn dotted.</li>
+      <li>TrendForce prints its spot boards without a currency. Outlets quoting the same boards report US dollars, and this page follows them.</li>
+      <li>The graphics card figure is the median over current-generation cards in stock on Tom's Hardware's tracker. A period figure is the median of each card's own price change. The tracker began in January 2026, so there is no year figure yet.</li>
       <li>Kit prices are listings aggregated by WhereIsMyRAM, which resamples its own history on each refresh.</li>
-      <li>Amazon prices include marketplace sellers and one import listing. Arc B570 and Arc B580 had no new stock.</li>
       <li>The Newegg index is a pilot. RTX 5090 had no qualifying Newegg offer and is outside it.</li>
-      <li>Left out: memoryindex.io price levels, which disagree with the boards they cite, and street price roundups with no dates.</li>
+      <li>The forecasts are saved readings from TrendForce press releases.</li>
     </ul>
   </details>
 

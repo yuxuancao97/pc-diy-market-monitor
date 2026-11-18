@@ -110,5 +110,13 @@
   "cards_tracked": 8,
   "source_name": "TechFuelHQ GPU Price Index, Newegg pilot (CC BY 4.0)",
   "source_url": "https://techfuelhq.com/data/gpu-price-index/"
+ },
+ {
+  "date": "2026-11-17",
+  "median_premium_pct": 86.5,
+  "cards_qualified": 7,
+  "cards_tracked": 8,
+  "source_name": "TechFuelHQ GPU Price Index, Newegg pilot (CC BY 4.0)",
+  "source_url": "https://techfuelhq.com/data/gpu-price-index/"
  }
 ]
