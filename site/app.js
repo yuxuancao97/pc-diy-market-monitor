@@ -1,6 +1,9 @@
-// Calculations and drawings for the page. Data comes from runtime.js.
+// Calculations and drawings for the page. Data comes from runtime.js, and
+// every judgement about a number from rules.js.
 (() => {
+  const R = mmRules;
   const C = (i) => dash.colors[i % dash.colors.length];
+  const DAY = 864e5;
   const parse = d3.utcParse('%Y-%m-%d');
   const fDay = d3.utcFormat('%b %-d');
   const fDayY = d3.utcFormat('%b %-d, %Y');
@@ -12,115 +15,80 @@
     usd0: (v) => '$' + d3.format(',.0f')(v),
     pct1: signed(1),
     pct2: signed(2),
-    pctabs: (v) => (+v).toFixed(1) + '%',
-    x1: (v) => (+v).toFixed(1),
     int: (v) => String(v),
     text: (v) => String(v),
     date: (v) => fDay(parse(v)),
     dateY: (v) => fDayY(parse(v)),
-    age: (v) => { const days = Math.round((Date.now() - parse(v)) / 864e5); return days <= 0 ? 'today' : days === 1 ? '1 day ago' : days + ' days ago'; },
+    age: (v) => { const days = Math.round((Date.now() - parse(v)) / DAY); return days <= 0 ? 'today' : days === 1 ? '1 day ago' : days + ' days ago'; },
   };
 
-  // Summaries. Each returns one row so every printed figure can be traced to it.
-  dash.calc('ddr5_summary', {
-    title: 'DDR5 16Gb spot, live against first saved reading',
-    description: 'Session average on the live TrendForce board and its change from the first reading in the saved file.',
-    inputs: ['ddr5_spot_points', 'dram_spot'],
-    fn: (readings, board) => {
-      const live = board.find((r) => r.item === 'DDR5 16Gb (2Gx8) 4800/5600');
-      if (!readings.length || !live) return [];
-      const first = readings[0];
-      return [{ latest: live.session_avg, latest_date: live.as_of, first_date: first.date, change_first_pct: Math.round((live.session_avg / first.price - 1) * 1000) / 10 }];
-    },
-  });
-  dash.calc('ddr4_summary', {
-    title: 'DDR4 8Gb spot, latest against earlier readings',
-    description: 'Latest reading against the one before it, the first in the file and the highest.',
-    inputs: ['ddr4_spot_history'],
-    fn: (readings) => {
-      if (readings.length < 2) return [];
-      const pct = (a, b) => Math.round((a / b - 1) * 1000) / 10;
-      const first = readings[0], prev = readings[readings.length - 2], last = readings[readings.length - 1];
-      const peak = readings.reduce((m, r) => (r.price > m.price ? r : m));
-      return [{
-        latest: last.price, latest_date: last.date,
-        prev_date: prev.date, change_prev_pct: pct(last.price, prev.price),
-        first_date: first.date, change_first_pct: pct(last.price, first.price),
-        peak: peak.price, peak_date: peak.date, below_peak_pct: -pct(last.price, peak.price),
-      }];
-    },
-  });
-  dash.calc('ddr4_window', {
-    title: 'DDR4 8Gb spot, change over the chart period',
-    description: 'Latest reading against the first reading inside the chosen chart period.',
-    inputs: ['ddr4_spot_history'],
-    fn: (readings) => {
-      if (readings.length < 2) return [];
-      const days = { '1m': 31, '3m': 92, '6m': 183, '1y': 366 }[dash.params().range];
-      const last = readings[readings.length - 1];
-      let kept = readings;
-      if (days) {
-        const cut = new Date(Date.parse(last.date) - days * 864e5).toISOString().slice(0, 10);
-        kept = readings.filter((r) => r.date >= cut);
-        if (kept.length < 2) kept = readings.slice(-2);
+  // The key prices, in the order of the table. `fmt` prints a level, `axis` a tick.
+  const SPOT = [
+    { id: 'ddr5', plain: 'DDR5 memory chips', exact: 'DDR5 16Gb (2Gx8) 4800/5600, spot', unit: 'US$ per chip', series: 'DDR5 16Gb (2Gx8) 4800/5600' },
+    { id: 'ddr4', plain: 'DDR4 memory chips', exact: 'DDR4 8Gb (1Gx8) 3200, spot', unit: 'US$ per chip', series: 'DDR4 8Gb (1Gx8) 3200' },
+    { id: 'gddr6', plain: 'Graphics memory chips', exact: 'GDDR6 8Gb, spot', unit: 'US$ per chip', series: 'GDDR6 8Gb' },
+    { id: 'nand', plain: 'SSD flash wafers', exact: '512Gb TLC NAND wafer, spot', unit: 'US$', series: '512Gb TLC' },
+  ];
+  const ORDER = ['ddr5', 'ddr4', 'kit', 'gddr6', 'nand', 'gpu'];
+
+  dash.calc('key_prices', {
+    title: 'Key prices with the same four periods',
+    description: 'Latest reading of each price and its change against the reading nearest to a week, a month, three months and a year earlier.',
+    inputs: ['spot_history', 'ddr5_kit_retail', 'gpu_history'],
+    fn: (spot, kit, cards) => {
+      const rows = SPOT.map((k) => {
+        const points = spot.filter((r) => r.series === k.series).map((r) => ({ date: r.date, value: r.price }));
+        return { ...k, fmt: 'usd3', ...(R.periods(points) || {}), points };
+      });
+      const kitPoints = kit.map((r) => ({ date: r.date, value: r.cheapest }));
+      rows.push({
+        id: 'kit', plain: '32GB DDR5 kit in shops', exact: '2x16GB DDR5-6000 CL30, cheapest listing', unit: 'US$ per kit', fmt: 'usd0',
+        ...(R.periods(kitPoints) || {}), points: kitPoints, second: kit.map((r) => ({ date: r.date, value: r.average })),
+      });
+      const stats = R.cardStats(cards);
+      if (stats) {
+        rows.push({
+          id: 'gpu', plain: 'Graphics cards', exact: 'Median of ' + stats.cards + ' current cards, best US price over MSRP', unit: 'percent over MSRP', fmt: 'pct1', over: true,
+          ...stats,
+        });
       }
-      return [{ from_date: kept[0].date, change_pct: Math.round((last.price / kept[0].price - 1) * 1000) / 10 }];
+      return ORDER.map((id) => rows.find((r) => r.id === id)).filter((r) => r && r.latest != null);
     },
   });
-  dash.calc('kit_summary', {
-    title: '32GB DDR5 kit, latest against a month and a year earlier',
-    description: 'Cheapest listing now, against the last reading at least 30 days earlier and the last at least a year earlier.',
-    inputs: ['ddr5_kit_retail'],
-    fn: (readings) => {
-      if (!readings.length) return [];
-      const last = readings[readings.length - 1];
-      const back = (days) => {
-        const cut = new Date(Date.parse(last.date) - days * 864e5).toISOString().slice(0, 10);
-        return readings.filter((r) => r.date <= cut).pop() || readings[0];
+
+  dash.calc('health', {
+    title: 'Market health',
+    description: 'For each market, where its lead price stands against a year ago (launch price for graphics cards) and which way it moved in the last month.',
+    inputs: ['key_prices'],
+    fn: (keys) => {
+      const of = (id) => keys.find((k) => k.id === id);
+      const made = (market, key, basis) => {
+        if (!key) return null;
+        const v = key.over ? R.verdict(key.latest, key.m1 && key.m1.pct, 'launch prices') : R.verdict(key.y1 && key.y1.pct, key.m1 && key.m1.pct, 'a year ago');
+        return { market, basis, id: key.id, ...v, key };
       };
-      const month = back(30), year = back(365);
-      return [{
-        cheapest: last.cheapest, average: last.average, latest_date: last.date,
-        month_date: month.date, change_month_pct: Math.round((last.cheapest / month.cheapest - 1) * 1000) / 10,
-        year_date: year.date, multiple_year: Math.round((last.cheapest / year.cheapest) * 10) / 10,
-      }];
+      return [
+        made('Memory chips', of('ddr5'), 'DDR5 16Gb chip, spot'),
+        made('Memory in shops', of('kit'), '32GB DDR5 kit, cheapest listing'),
+        made('Storage', of('nand'), '512Gb TLC flash wafer, spot'),
+        made('Graphics cards', of('gpu'), 'Median current card'),
+      ].filter(Boolean);
     },
   });
-  dash.calc('nand_summary', {
-    title: '512Gb TLC wafer spot, live reading',
-    description: 'Session average on the live TrendForce wafer board and the weekly change printed with it.',
-    inputs: ['nand_wafer_board'],
-    fn: (board) => {
-      const live = board.find((r) => r.item === '512Gb TLC');
-      return live ? [{ latest: live.session_avg, latest_date: live.as_of, weekly_change_pct: live.change_pct }] : [];
-    },
-  });
-  dash.calc('nand_window', {
-    title: '512Gb TLC wafer spot, change across the saved readings',
-    description: 'Latest saved reading against the first one in the file.',
-    inputs: ['nand_wafer_spot'],
-    fn: (readings) => {
-      if (readings.length < 2) return [];
-      const first = readings[0], last = readings[readings.length - 1];
-      return [{ from_date: first.date, change_pct: Math.round((last.price / first.price - 1) * 1000) / 10 }];
-    },
-  });
+
   dash.calc('spot_boards', {
     title: 'TrendForce spot boards, both pages',
     description: 'Rows from the DRAM page followed by the wafer row from the NAND flash page.',
     inputs: ['dram_spot', 'nand_wafer_board'],
     fn: (dram, wafer) => dram.concat(wafer),
   });
-  dash.calc('gpu_summary', {
-    title: 'Graphics cards, median premium over MSRP',
-    description: 'Median of the printed premium over MSRP across cards with a new listing.',
-    inputs: ['gpu_street'],
-    fn: (cards) => {
-      const priced = cards.filter((c) => c.street != null).map((c) => c.premium_pct).sort((a, b) => a - b);
-      if (!priced.length) return [];
-      const mid = priced.length >> 1;
-      const median = priced.length % 2 ? priced[mid] : Math.round(((priced[mid - 1] + priced[mid]) / 2) * 10) / 10;
-      return [{ median_premium_pct: median, lowest_pct: priced[0], highest_pct: priced[priced.length - 1], priced: priced.length, no_stock: cards.length - priced.length, observed: cards.map((c) => c.observed).sort().pop() }];
+  dash.calc('gpu_latest', {
+    title: 'Graphics cards on the latest day read',
+    description: 'Every card on the tracker on its latest day, with the premium of its best US price over MSRP.',
+    inputs: ['gpu_history'],
+    fn: (rows) => {
+      const latest = rows.reduce((d, r) => (r.date > d ? r.date : d), '');
+      return rows.filter((r) => r.date === latest).map((r) => ({ ...r, premium_pct: r.price == null ? null : R.change(r.price, r.msrp) }));
     },
   });
   dash.calc('gpu_index_latest', {
@@ -129,16 +97,6 @@
     inputs: ['gpu_index'],
     fn: (captures) => (captures.length ? [captures[captures.length - 1]] : []),
   });
-
-  // Chart period: rows dated within the chosen number of days before the latest row.
-  const PERIOD_DAYS = { '1m': 31, '3m': 92, '6m': 183, '1y': 366 };
-  function inPeriod(rows) {
-    const days = PERIOD_DAYS[dash.params().range];
-    if (!days || rows.length < 3) return rows;
-    const cut = new Date(Date.parse(rows[rows.length - 1].date) - days * 864e5).toISOString().slice(0, 10);
-    const kept = rows.filter((r) => r.date >= cut);
-    return kept.length >= 2 ? kept : rows.slice(-2);
-  }
 
   // Loading and failure states shared by every drawing.
   function rowsOf(el, ids, quiet) {
@@ -160,6 +118,8 @@
     if (text != null) n.textContent = text;
     return n;
   };
+  const tone = (means) => (means === 'good' ? ' mm-good' : means === 'bad' ? ' mm-bad' : '');
+  const level = (key, v) => (key.over ? F.pct1(v) + ' over MSRP' : F[key.fmt](v));
 
   // One value from one row, formatted by data-fmt.
   dash.draw('val', (node) => {
@@ -175,47 +135,82 @@
     }
     const v = row ? row[node.dataset.field] : null;
     node.textContent = v == null ? '' : (F[node.dataset.fmt] || String)(v);
-    const tone = node.dataset.tone === 'price' && v != null;
-    node.classList.toggle('mm-good', tone && mmRules.meaning(v) === 'good');
-    node.classList.toggle('mm-bad', tone && mmRules.meaning(v) === 'bad');
   });
 
-  // A word for where a price is heading, or for where a level stands.
-  dash.draw('dir', (node) => {
-    const got = rowsOf(node, [node.dataset.source], true);
+  // Market health: a verdict per market, each naming the price it rests on.
+  dash.draw('health', (box) => {
+    const got = rowsOf(box, ['health']);
     if (!got) return;
-    let row = got[0][0];
-    if (node.dataset.where) {
-      const i = node.dataset.where.indexOf('=');
-      row = got[0].find((r) => String(r[node.dataset.where.slice(0, i)]) === node.dataset.where.slice(i + 1));
-    }
-    const v = row ? row[node.dataset.field] : null;
-    if (v == null) { node.textContent = ''; return; }
-    const level = node.dataset.kind === 'level';
-    node.textContent = level ? (v > 0 ? node.dataset.up : v < 0 ? node.dataset.down : node.dataset.flat) : mmRules.direction(v);
-    const means = level ? (v > 0 ? 'bad' : v < 0 ? 'good' : '') : mmRules.meaning(v);
-    node.classList.toggle('mm-good', means === 'good');
-    node.classList.toggle('mm-bad', means === 'bad');
+    box.replaceChildren(...got[0].map((h) => {
+      const k = h.key, card = el('div', 'mm-verdict');
+      card.append(el('p', 'mm-verdict-market', h.market));
+      card.append(el('p', h.level ? 'mm-verdict-level' + tone(h.level_tone) : 'mm-verdict-none', h.level || 'No reading a year ago'));
+      card.append(el('p', h.move ? 'mm-verdict-move' + tone(h.move_tone) : 'mm-verdict-none', h.move || 'No reading a month ago'));
+      const facts = [h.basis + ': ' + level(k, k.latest) + ' on ' + F.date(k.latest_date) + '.'];
+      if (!k.over && k.y1) facts.push(F.pct1(k.y1.pct) + ' since ' + F.dateY(k.y1.from_date) + '.');
+      if (k.m1) facts.push(F.pct1(k.m1.pct) + ' since ' + F.date(k.m1.from_date) + '.');
+      card.append(el('p', 'mm-verdict-basis', facts.join(' ')));
+      return card;
+    }));
   });
 
-  dash.draw('spark', (box) => {
-    const got = rowsOf(box, [box.dataset.source], true);
-    if (!got) return;
-    const f = box.dataset.field, col = box.dataset.color ? 'var(' + box.dataset.color + ')' : C(0);
-    const pts = got[0].filter((r) => r[f] != null).map((r) => ({ t: parse(r.date), v: +r[f] }));
-    if (pts.length < 2) return box.replaceChildren();
+  // The window every trend in the key table is drawn on: the year up to the latest reading of any row.
+  const yearWindow = (keys) => {
+    const end = keys.reduce((d, k) => (k.latest_date > d ? k.latest_date : d), '');
+    return [new Date(+parse(end) - 365 * DAY), parse(end)];
+  };
+
+  function spark(box, key, span) {
+    const pts = key.points.map((p) => ({ t: parse(p.date), v: +p.value })).filter((p) => p.t >= span[0] && p.t <= span[1]);
+    if (pts.length < 2) return;
     const W = Math.max(box.clientWidth, 80), H = 40;
-    const x = d3.scaleUtc().domain(d3.extent(pts, (d) => d.t)).range([2, W - 6]);
-    const [lo, hi] = d3.extent(pts, (d) => d.v);
-    const y = d3.scaleLinear().domain(lo === hi ? [lo - 1, hi + 1] : [lo, hi]).range([H - 6, 6]);
+    const x = d3.scaleUtc().domain(span).range([2, W - 6]);
+    const y = d3.scaleLinear().domain([Math.min(0, d3.min(pts, (d) => d.v)), d3.max(pts, (d) => d.v)]).range([H - 4, 6]);
     const svg = d3.create('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('width', '100%').attr('height', H)
-      .attr('role', 'img').attr('aria-label', box.dataset.label || 'Trend');
-    svg.append('path').attr('d', d3.area().x((d) => x(d.t)).y0(H).y1((d) => y(d.v))(pts)).style('fill', col).style('opacity', 0.2);
-    svg.append('path').attr('d', d3.line().x((d) => x(d.t)).y((d) => y(d.v))(pts)).style('fill', 'none').style('stroke', col)
+      .attr('role', 'img').attr('aria-label', key.plain + ' over the past year');
+    svg.append('path').attr('d', d3.area().x((d) => x(d.t)).y0(y(0)).y1((d) => y(d.v))(pts)).style('fill', C(0)).style('opacity', 0.18);
+    svg.append('path').attr('d', d3.line().x((d) => x(d.t)).y((d) => y(d.v))(pts)).style('fill', 'none').style('stroke', C(0))
       .attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round');
     const last = pts[pts.length - 1];
-    svg.append('circle').attr('cx', x(last.t)).attr('cy', y(last.v)).attr('r', 3.5).style('fill', col);
+    svg.append('circle').attr('cx', x(last.t)).attr('cy', y(last.v)).attr('r', 3.5).style('fill', C(0));
     box.replaceChildren(svg.node());
+  }
+
+  // Key prices: a row per price, the same period in the same column.
+  dash.draw('key', (body) => {
+    const got = rowsOf(body, ['key_prices'], true);
+    if (!got) return;
+    const span = yearWindow(got[0]);
+    const sparks = [];
+    body.replaceChildren(...got[0].map((k) => {
+      const tr = el('tr');
+      tr.id = 'row-' + k.id;
+      const name = el('td', 'mm-k-name');
+      name.append(el('span', 'mm-plain', k.plain), el('span', 'mm-sub', k.exact));
+      const now = el('td', 'mm-k-now');
+      now.append(el('span', 'mm-v mm-now', F[k.fmt](k.latest)), el('span', 'mm-sub', (k.over ? 'over MSRP, ' : '') + F.date(k.latest_date)));
+      tr.append(name, now);
+      R.PERIODS.forEach((p) => {
+        const td = el('td', 'mm-k-per'), got = k[p.id];
+        td.dataset.label = p.label;
+        if (got) {
+          const move = el('span', 'mm-v mm-move' + tone(R.meaning(got.pct)), F.pct1(got.pct));
+          move.title = (k.over ? 'Median price change of ' + got.cards + ' cards since ' : 'From ' + F[k.fmt](got.from_value) + ' on ') + F.dateY(got.from_date);
+          td.append(move);
+        } else {
+          const none = el('span', 'mm-none', 'No reading');
+          none.title = 'No reading within ' + p.within + ' days of ' + p.label + ' earlier';
+          td.append(none);
+        }
+        tr.append(td);
+      });
+      const trend = el('td', 'mm-k-trend'), box = el('div', 'mm-spark');
+      trend.append(box);
+      tr.append(trend);
+      sparks.push([box, k]);
+      return tr;
+    }));
+    sparks.forEach(([box, k]) => spark(box, k, span));
   });
 
   function stage(box, W, H, aria) {
@@ -243,45 +238,58 @@
     return { svg, measure, show, hide };
   }
 
-  // Lines drawn point to point on an axis fitted to the period. A stretch longer than gapDays without a reading is dotted.
+  // Lines on a time axis that is the same for every chart: `span` is the
+  // chosen period, so a series with a short record looks short. The value
+  // axis starts at zero. A stretch longer than gapDays without a reading is
+  // dotted.
   function lineChart(box, o) {
-    const W = Math.max(box.clientWidth, 260), H = o.height;
+    const series = o.series.map((s) => ({ ...s, pts: s.pts.filter((p) => p.t >= o.span[0] && p.t <= o.span[1]) })).filter((s) => s.pts.length);
+    if (!series.length) return box.replaceChildren(el('p', 'mm-fail', 'No readings in this period'));
+    const W = Math.max(box.clientWidth, 240), H = o.height;
     const { svg, measure, show, hide } = stage(box, W, H, o.aria);
-    const col = (i) => (o.colors && o.colors[i]) || C(i);
-    const all = o.series.flatMap((s) => s.pts);
-    const xfmt = (d3.max(all, (d) => d.t) - d3.min(all, (d) => d.t)) / 864e5 > 150 ? d3.utcFormat('%b %Y') : fDay;
-    const [lo, hi] = d3.extent(all, (d) => d.v), pad = (hi - lo || Math.abs(hi) || 1) * 0.14;
-    const y = d3.scaleLinear().domain([lo - pad < 0 && lo >= 0 ? 0 : lo - pad, hi + pad]).nice(4);
+    const all = series.flatMap((s) => s.pts);
+    // Month ticks name the year on the first tick and on each January.
+    const long = (o.span[1] - o.span[0]) / DAY > 150;
+    const xfmt = (d, i) => (!long ? fDay(d) : i === 0 || d.getUTCMonth() === 0 ? d3.utcFormat('%b %Y')(d) : d3.utcFormat('%b')(d));
+    const y = d3.scaleLinear().domain([Math.min(0, d3.min(all, (d) => d.v)), d3.max(all, (d) => d.v) * 1.12 || 1]).nice(4);
     const yt = y.ticks(4);
-    const many = o.series.length > 1;
-    const ends = o.series.map((s, i) => {
+    const many = series.length > 1;
+    const ends = series.map((s, i) => {
       const p = s.pts[s.pts.length - 1];
       return { i, p, text: (many ? s.label + ' ' : '') + o.fmt(p.v) };
     });
     const m = { t: 22, b: 30, l: d3.max(yt, (t) => measure(o.tick(t), 'mm-tick')) + 12, r: d3.max(ends, (e) => measure(e.text, 'mm-end')) + 16 };
     y.range([H - m.b, m.t]);
-    const x = d3.scaleUtc().domain(d3.extent(all, (d) => d.t)).range([m.l, W - m.r]);
+    const x = d3.scaleUtc().domain(o.span).range([m.l, W - m.r]);
     svg.append('g').selectAll('text').data(yt).join('text').attr('class', 'mm-tick').attr('x', m.l - 10).attr('y', (d) => y(d))
       .attr('dy', '0.32em').attr('text-anchor', 'end').text((d) => o.tick(d));
-    const xt = x.ticks(Math.max(2, Math.floor((W - m.l - m.r) / 96)));
-    svg.append('g').selectAll('text').data(xt).join('text').attr('class', 'mm-tick').attr('x', (d) => x(d)).attr('y', H - 8)
-      .attr('text-anchor', 'middle').text((d) => xfmt(d));
-    o.series.forEach((s, i) => {
+    // A tick whose label would touch the one before it is left out.
+    let edge = -Infinity;
+    const xt = x.ticks(Math.max(3, Math.min(7, Math.floor((W - m.l - m.r) / 58)))).map((d, i) => ({ d, text: xfmt(d, i) })).filter((t) => {
+      const half = measure(t.text, 'mm-tick') / 2;
+      if (x(t.d) - half < edge + 8) return false;
+      edge = x(t.d) + half;
+      return true;
+    });
+    svg.append('g').selectAll('text').data(xt).join('text').attr('class', 'mm-tick').attr('x', (t) => x(t.d)).attr('y', H - 8)
+      .attr('text-anchor', 'middle').text((t) => t.text);
+    series.forEach((s, i) => {
       const g = svg.append('g');
-      if (i === 0) g.append('path').attr('d', d3.area().x((d) => x(d.t)).y0(H - m.b).y1((d) => y(d.v))(s.pts)).style('fill', col(0)).style('opacity', 0.16);
+      if (i === 0) g.append('path').attr('d', d3.area().x((d) => x(d.t)).y0(y(0)).y1((d) => y(d.v))(s.pts)).style('fill', C(0)).style('opacity', 0.14);
       for (let k = 1; k < s.pts.length; k++) {
         const a = s.pts[k - 1], b = s.pts[k];
-        const gap = o.gapDays && (b.t - a.t) / 864e5 > o.gapDays;
+        const gap = o.gapDays && (b.t - a.t) / DAY > o.gapDays;
         g.append('line').attr('x1', x(a.t)).attr('y1', y(a.v)).attr('x2', x(b.t)).attr('y2', y(b.v))
-          .style('stroke', col(i)).attr('stroke-width', 2.5).attr('stroke-linecap', 'round')
-          .attr('stroke-dasharray', gap ? '1 8' : null).style('opacity', gap ? 0.75 : 1);
+          .style('stroke', C(i)).attr('stroke-width', 2.25).attr('stroke-linecap', 'round')
+          .attr('stroke-dasharray', gap ? '1 7' : null).style('opacity', gap ? 0.75 : 1);
       }
-      g.selectAll('circle').data(s.pts).join('circle').attr('cx', (d) => x(d.t)).attr('cy', (d) => y(d.v)).attr('r', 3).style('fill', col(i));
+      if (s.pts.length <= 40) g.selectAll('circle').data(s.pts).join('circle').attr('cx', (d) => x(d.t)).attr('cy', (d) => y(d.v)).attr('r', 2.75).style('fill', C(i));
+      else { const p = s.pts[s.pts.length - 1]; g.append('circle').attr('cx', x(p.t)).attr('cy', y(p.v)).attr('r', 3.5).style('fill', C(i)); }
     });
     if (!many) {
-      const top = o.series[0].pts.reduce((a, b) => (b.v > a.v ? b : a)), last = ends[0].p;
+      const top = series[0].pts.reduce((a, b) => (b.v > a.v ? b : a)), last = ends[0].p;
       if (top.v > last.v && x(last.t) - x(top.t) > 70) {
-        svg.append('circle').attr('cx', x(top.t)).attr('cy', y(top.v)).attr('r', 5).style('fill', col(0));
+        svg.append('circle').attr('cx', x(top.t)).attr('cy', y(top.v)).attr('r', 4.5).style('fill', C(0));
         svg.append('text').attr('class', 'mm-tick').attr('x', x(top.t) + (x(top.t) - m.l < 44 ? 9 : 0)).attr('y', y(top.v) - 11).attr('text-anchor', x(top.t) - m.l < 44 ? 'start' : 'middle').text('high ' + o.fmt(top.v));
       }
     }
@@ -295,69 +303,81 @@
     const point = (ev) => {
       const t = +x.invert(d3.pointer(ev, svg.node())[0]);
       const near = stamps.reduce((a, b) => (Math.abs(b - t) < Math.abs(a - t) ? b : a));
-      const hits = o.series.map((s, i) => ({ s, i, p: s.pts.find((p) => +p.t === near) })).filter((h) => h.p);
-      hover.selectAll('circle').data(hits).join('circle').attr('cx', (h) => x(h.p.t)).attr('cy', (h) => y(h.p.v)).attr('r', 6)
-        .style('fill', (h) => col(h.i)).style('stroke', 'var(--color-panel)').attr('stroke-width', 2);
+      const hits = series.map((s, i) => ({ s, i, p: s.pts.find((p) => +p.t === near) })).filter((h) => h.p);
+      hover.selectAll('circle').data(hits).join('circle').attr('cx', (h) => x(h.p.t)).attr('cy', (h) => y(h.p.v)).attr('r', 5.5)
+        .style('fill', (h) => C(h.i)).style('stroke', 'var(--color-panel)').attr('stroke-width', 2);
       show([fDayY(new Date(near))].concat(hits.map((h) => (many ? h.s.label + ' ' : '') + o.fmt(h.p.v))), x(new Date(near)), d3.min(hits, (h) => y(h.p.v)));
     };
     svg.on('pointermove', point).on('pointerdown', point).on('pointerleave', () => { hide(); hover.selectAll('circle').remove(); });
   }
 
-  dash.draw('ddr4-chart', (box) => {
-    const got = rowsOf(box, ['ddr4_spot_history']);
-    if (!got) return;
-    lineChart(box, {
-      height: 280, gapDays: 45, aria: 'DDR4 8Gb spot price by reading date, US dollars per chip',
-      series: [{ label: 'spot', pts: inPeriod(got[0]).map((r) => ({ t: parse(r.date), v: r.price })) }],
-      fmt: (v) => '$' + chip(v), tick: (v) => '$' + v,
-    });
-  });
+  // The chart period, counted back from the latest reading on the page.
+  const PERIOD_DAYS = { '1m': 31, '3m': 92, '6m': 183, '1y': 366 };
+  function chartSpan(keys, index) {
+    const dates = keys.flatMap((k) => k.points.map((p) => p.date)).concat(index.map((r) => r.date)).sort();
+    const end = parse(dates[dates.length - 1]), days = PERIOD_DAYS[dash.params().range];
+    return [days ? new Date(+end - days * DAY) : parse(dates[0]), end];
+  }
 
-  dash.draw('kit-chart', (box) => {
-    const got = rowsOf(box, ['ddr5_kit_retail']);
+  // One chart per key price, all on the chosen period.
+  dash.draw('history', (grid) => {
+    const got = rowsOf(grid, ['key_prices', 'gpu_index']);
     if (!got) return;
-    lineChart(box, {
-      height: 280, aria: 'Cheapest and average listing for a 2x16GB DDR5-6000 CL30 kit, US dollars',
-      series: [
-        { label: 'cheapest', pts: inPeriod(got[0]).map((r) => ({ t: parse(r.date), v: r.cheapest })) },
-        { label: 'average', pts: inPeriod(got[0]).map((r) => ({ t: parse(r.date), v: r.average })) },
-      ],
-      fmt: (v) => '$' + d3.format(',.0f')(v), tick: (v) => '$' + v,
+    const span = chartSpan(got[0], got[1]);
+    const charts = [];
+    const cards = got[0].map((k) => {
+      const card = el('div', 'mm-card'), box = el('div', 'mm-chart');
+      card.id = 'chart-' + k.id;
+      card.append(el('h3', 'mm-h3', k.plain), el('p', 'mm-muted', k.exact + '. ' + k.unit[0].toUpperCase() + k.unit.slice(1) + '.'));
+      if (k.second) {
+        const legend = el('p', 'mm-legend');
+        ['Cheapest listing', 'Average listing'].forEach((label, i) => {
+          const item = el('span', 'mm-legend-key'), sw = el('span', 'mm-sw');
+          sw.style.background = C(i);
+          item.append(sw, label);
+          legend.append(item);
+        });
+        card.append(legend);
+      }
+      card.append(box);
+      const pts = (rows) => rows.map((p) => ({ t: parse(p.date), v: +p.value }));
+      const series = [{ label: k.second ? 'cheapest' : k.plain, pts: pts(k.points) }];
+      if (k.second) series.push({ label: 'average', pts: pts(k.second) });
+      charts.push([box, {
+        height: 230, gapDays: 45, span, series, aria: k.plain + ', ' + k.exact + ', by reading date',
+        fmt: (v) => (k.over ? F.pct1(v) : F[k.fmt](v)),
+        tick: (v) => (k.over ? (v > 0 ? '+' : '') + v + '%' : '$' + v),
+      }]);
+      return card;
     });
+    grid.replaceChildren(...cards);
+    charts.forEach(([box, o]) => lineChart(box, o));
   });
 
   dash.draw('index-chart', (box) => {
-    const got = rowsOf(box, ['gpu_index']);
+    const got = rowsOf(box, ['gpu_index', 'key_prices']);
     if (!got) return;
     lineChart(box, {
-      height: 220, aria: 'Median premium over launch price at Newegg by capture date, percent',
-      series: [{ label: 'median', pts: inPeriod(got[0]).map((r) => ({ t: parse(r.date), v: r.median_premium_pct })) }],
-      fmt: (v) => '+' + v.toFixed(1) + '%', tick: (v) => '+' + v + '%',
+      height: 220, gapDays: 45, span: chartSpan(got[1], got[0]), aria: 'Median premium over launch price at Newegg by capture date, percent',
+      series: [{ label: 'median', pts: got[0].map((r) => ({ t: parse(r.date), v: r.median_premium_pct })) }],
+      fmt: (v) => '+' + v.toFixed(1) + '%', tick: (v) => (v > 0 ? '+' : '') + v + '%',
     });
   });
 
   dash.draw('board', (body) => {
     const got = dash.data('spot_boards');
     const rows = got.status === 'ok' && got.data ? got.data : [];
-    const enc = (s) => String(s).replace(/[%&=]/g, (c) => encodeURIComponent(c));
     body.replaceChildren(...rows.map((r) => {
       const tr = el('tr');
       const change = el('td', 'mm-r');
-      change.append(el('span', 'mm-move' + (r.change_pct < 0 ? ' mm-good' : r.change_pct > 0 ? ' mm-bad' : ''), F.pct2(r.change_pct)));
+      change.append(el('span', 'mm-move' + tone(R.meaning(r.change_pct)), F.pct2(r.change_pct)));
       const span = el('div', 'mm-span');
-      const end = (field) => {
-        const n = el('span', 'mm-span-n', chip(r[field]));
-        n.dataset.source = 'spot_boards';
-        n.dataset.field = field;
-        n.dataset.where = 'item=' + enc(r.item);
-        return n;
-      };
       const track = el('div', 'mm-track'), dot = el('span', 'mm-dot');
       dot.style.left = (r.high > r.low ? Math.min(Math.max((r.session_avg - r.low) / (r.high - r.low), 0), 1) * 100 : 50) + '%';
       track.append(dot);
-      const lowEnd = end('low');
-      lowEnd.style.textAlign = 'right';
-      span.append(lowEnd, track, end('high'));
+      const low = el('span', 'mm-span-n', chip(r.low));
+      low.style.textAlign = 'right';
+      span.append(low, track, el('span', 'mm-span-n', chip(r.high)));
       const wide = el('td');
       wide.append(span);
       tr.append(el('td', 'mm-item', r.item), el('td', 'mm-dim mm-col-board', r.board), el('td', 'mm-r mm-item', chip(r.session_avg)), change, wide, el('td', 'mm-r mm-dim mm-last', F.date(r.as_of)));
@@ -389,56 +409,67 @@
       .on('pointerleave', hide);
   });
 
+  // Best US price over MSRP, a bar per card. data-gen picks current or earlier cards.
   dash.draw('gpu-bars', (box) => {
-    const got = rowsOf(box, ['gpu_street']);
+    const got = rowsOf(box, ['gpu_latest']);
     if (!got) return;
-    const priced = got[0].filter((r) => r.street != null).sort((a, b) => b.premium_pct - a.premium_pct);
-    const rows = priced.concat(got[0].filter((r) => r.street == null));
-    const name = (r) => (/GB$/.test(r.card) ? r.card : r.card + ' ' + r.vram);
-    const pct = (r) => (r.street == null ? r.seller : F.pct1(r.premium_pct));
-    const price = (r) => (r.street == null ? 'MSRP ' + money(r.msrp) : money(r.street) + ' from ' + money(r.msrp));
-    const tone = () => C(0);
+    const mine = got[0].filter((r) => r.current === (box.dataset.gen !== 'earlier'));
+    const priced = mine.filter((r) => r.price != null).sort((a, b) => b.premium_pct - a.premium_pct);
+    const rows = priced.concat(mine.filter((r) => r.price == null));
+    if (!rows.length) return box.replaceChildren();
+    const pct = (r) => (r.price == null ? 'Out of stock' : F.pct1(r.premium_pct));
+    const price = (r) => (r.price == null ? 'MSRP ' + money(r.msrp) : money(r.price) + ', MSRP ' + money(r.msrp));
     const W = Math.max(box.clientWidth, 260), narrow = W < 560, rh = narrow ? 50 : 34, H = rows.length * rh + 4;
-    const { svg, measure, show, hide } = stage(box, W, H, 'Lowest new price over MSRP by graphics card, percent');
-    const lw = narrow ? 0 : d3.max(rows, (r) => measure(name(r), 'mm-end')) + 16;
+    const { svg, measure, show, hide } = stage(box, W, H, 'Best US price over MSRP by graphics card, percent');
+    const lw = narrow ? 0 : d3.max(rows, (r) => measure(r.card, 'mm-end')) + 16;
     const pw = d3.max(rows, (r) => measure(pct(r), 'mm-end')) + 12;
     const rw = narrow ? 0 : d3.max(rows, (r) => measure(price(r), 'mm-tick')) + 8;
-    const x = d3.scaleLinear().domain([0, d3.max(priced, (r) => r.premium_pct) || 1]).range([lw, W - rw - pw]);
+    const x = d3.scaleLinear().domain([Math.min(0, d3.min(priced, (r) => r.premium_pct) || 0), d3.max(priced, (r) => r.premium_pct) || 1]).range([lw, W - rw - pw]);
     const g = svg.append('g').selectAll('g').data(rows).join('g').attr('transform', (r, i) => `translate(0,${i * rh})`);
     const by = narrow ? 30 : 10, bh = narrow ? 10 : 14, ty = narrow ? 18 : 17;
-    g.filter((r) => r.street != null).append('rect').attr('x', x(0)).attr('y', by).attr('width', (r) => Math.max(x(r.premium_pct) - x(0), 3)).attr('height', bh).attr('rx', 2).style('fill', tone);
-    g.append('text').attr('class', 'mm-end').attr('x', 0).attr('y', ty).attr('dy', narrow ? 0 : '0.32em').text(name);
+    g.filter((r) => r.price != null).append('rect').attr('x', (r) => Math.min(x(0), x(r.premium_pct))).attr('y', by).attr('width', (r) => Math.max(Math.abs(x(r.premium_pct) - x(0)), 3)).attr('height', bh).attr('rx', 2).style('fill', C(0));
+    g.append('text').attr('class', 'mm-end').attr('x', 0).attr('y', ty).attr('dy', narrow ? 0 : '0.32em').text((r) => r.card);
     if (narrow) {
-      g.append('text').attr('class', 'mm-tick').attr('x', W).attr('y', ty).attr('text-anchor', 'end').text((r) => (r.street == null ? r.seller : F.pct1(r.premium_pct) + '  ' + money(r.street)));
+      g.append('text').attr('class', 'mm-tick').attr('x', W).attr('y', ty).attr('text-anchor', 'end').text((r) => (r.price == null ? 'Out of stock' : F.pct1(r.premium_pct) + '  ' + money(r.price)));
     } else {
-      g.append('text').attr('class', (r) => (r.street == null ? 'mm-tick' : 'mm-end' + (r.premium_pct > 0 ? ' mm-bad' : r.premium_pct < 0 ? ' mm-good' : ''))).attr('x', (r) => (r.street == null ? x(0) : x(r.premium_pct) + 9)).attr('y', ty).attr('dy', '0.32em').text(pct);
+      g.append('text').attr('class', (r) => (r.price == null ? 'mm-tick' : 'mm-end' + tone(R.meaning(r.premium_pct)))).attr('x', (r) => (r.price == null ? x(0) : Math.max(x(r.premium_pct), x(0)) + 9)).attr('y', ty).attr('dy', '0.32em').text(pct);
       g.append('text').attr('class', 'mm-tick').attr('x', W).attr('y', ty).attr('dy', '0.32em').attr('text-anchor', 'end').text(price);
     }
     g.append('rect').attr('x', 0).attr('y', 0).attr('width', W).attr('height', rh).style('fill', 'transparent')
       .on('pointermove pointerdown', (ev, r) => show(
-        r.street == null
-          ? [name(r), 'MSRP ' + money(r.msrp), r.seller]
-          : [name(r), 'MSRP ' + money(r.msrp), 'Lowest new ' + money(r.street), F.pct1(r.premium_pct) + ' over MSRP', r.seller],
+        r.price == null
+          ? [r.card, 'MSRP ' + money(r.msrp), 'Out of stock', 'Lowest ever ' + money(r.lowest_ever)]
+          : [r.card, 'MSRP ' + money(r.msrp), 'Best US price ' + money(r.price), F.pct1(r.premium_pct) + ' over MSRP', 'Lowest ever ' + money(r.lowest_ever)],
         d3.pointer(ev, svg.node())[0], rows.indexOf(r) * rh))
       .on('pointerleave', hide);
   });
 
+  // When the sources were last read, and how long ago that was.
   dash.draw('status', (node) => {
     const got = dash.data('meta');
     if (got.status !== 'ok' || !got.data.sources) { node.textContent = ''; return; }
-    const read = got.data.sources.filter((s) => s.ok).length;
-    node.textContent = read + ' of ' + got.data.sources.length + ' sources read ' + d3.utcFormat('%b %-d, %H:%M UTC')(new Date(got.data.generated_at));
+    const read = got.data.sources.filter((s) => s.ok).length, at = new Date(got.data.generated_at);
+    const hours = Math.floor((Date.now() - at) / 36e5);
+    const ago = hours < 1 ? 'under an hour ago' : hours === 1 ? '1 hour ago' : hours < 48 ? hours + ' hours ago' : Math.floor(hours / 24) + ' days ago';
+    node.textContent = read + ' of ' + got.data.sources.length + ' sources read ' + d3.utcFormat('%b %-d, %H:%M UTC')(at) + ', ' + ago;
+    node.classList.toggle('mm-bad', hours >= 6);
   });
 
-  // Sources named in the data, each linked once, then how the last refresh went.
+  // Sources named in the data, each linked once, then how the last refresh
+  // went. The archived copies of one page are one source, linked to the
+  // archive's list of them.
   dash.draw('sources', (list) => {
-    const ids = ['dram_spot', 'nand_wafer_board', 'ddr4_spot_history', 'ddr5_spot_points', 'ddr5_kit_retail', 'nand_wafer_spot', 'trendforce_outlook', 'gpu_street', 'gpu_index'];
+    const ids = ['dram_spot', 'nand_wafer_board', 'spot_history', 'ddr5_kit_retail', 'trendforce_outlook', 'gpu_history', 'gpu_index'];
     const seen = new Map(), meta = dash.data('meta');
-    // A page that is re-read goes by the name the refresh gives it.
-    if (meta.status === 'ok' && meta.data.sources) meta.data.sources.forEach((s) => seen.set(s.url, seen.has(s.url) ? seen.get(s.url) + ' and ' + s.title.replace(/^Capital & Compute /, '') : s.title));
+    if (meta.status === 'ok' && meta.data.sources) meta.data.sources.forEach((s) => seen.set(s.url, s.title));
     ids.forEach((id) => {
       const got = dash.data(id);
-      if (got.status === 'ok') got.data.forEach((r) => { if (r.source_url && !seen.has(r.source_url)) seen.set(r.source_url, r.source_name); });
+      if (got.status !== 'ok') return;
+      got.data.forEach((r) => {
+        if (!r.source_url) return;
+        const url = r.captured ? r.source_url.replace(/\/web\/\d{14}\//, '/web/*/') : r.source_url;
+        if (!seen.has(url)) seen.set(url, r.source_name);
+      });
     });
     list.replaceChildren(...[...seen].map(([url, name]) => {
       const item = el('li'), link = el('a', 'mm-link', name);
@@ -461,8 +492,7 @@
   document.querySelectorAll('.mm').forEach((n) => n.style.setProperty('--mm-accent', C(0)));
   document.querySelectorAll('.mm-rbtn').forEach((b) => b.addEventListener('click', () => dash.setParams({ range: b.dataset.range })));
   dash.onData(() => {
-    const now = dash.params().range || 'all';
+    const now = dash.params().range;
     document.querySelectorAll('.mm-rbtn').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.range === now)));
   });
-  document.querySelectorAll('.mm-sw').forEach((n) => { n.style.background = n.dataset.color ? 'var(' + n.dataset.color + ')' : C(+n.dataset.series || 0); });
 })();

@@ -9,9 +9,9 @@ public sources every hour.
 | --- | --- |
 | DRAM, module and GDDR spot boards | [TrendForce DRAM price trends](https://www.trendforce.com/price/dram/dram_spot) |
 | NAND wafer spot | [TrendForce NAND flash price trends](https://www.trendforce.com/price/flash/flash_spot) |
-| DDR4 8Gb spot history | [Capital & Compute price history](https://capitalandcompute.net/memory-prices/history/) |
+| Spot prices before this page began reading the boards | Copies of the same board on [dramexchange.com](https://www.dramexchange.com/) kept by the [Internet Archive](https://web.archive.org/web/*/https://www.dramexchange.com/) |
 | 32GB DDR5 kit retail prices | [Capital & Compute memory prices](https://capitalandcompute.net/memory-prices/) |
-| Graphics card prices against MSRP | [ComputingForGeeks GPU prices](https://computingforgeeks.com/gpu-prices/) |
+| Graphics card prices against MSRP | [Tom's Hardware GPU price tracker](https://www.tomshardware.com/pc-components/gpus/lowest-gpu-prices-tracking), and the Internet Archive's copies of it |
 | Median premium at Newegg | [TechFuelHQ GPU Price Index](https://techfuelhq.com/data/gpu-price-index/), CC BY 4.0 |
 | Contract price forecasts | TrendForce press releases, entered by hand |
 
@@ -31,5 +31,8 @@ npm run fetch
 ```bash
 npm run serve
 ```
+
+`npm run backfill` rebuilds the two archive files from the Internet Archive.
+It is run by hand and takes about half an hour the first time.
 
 Node 20 or later, no dependencies.

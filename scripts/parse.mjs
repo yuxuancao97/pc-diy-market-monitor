@@ -75,25 +75,6 @@ export function trendforce(html, want, url) {
 const MONTHS = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
 const two = (n) => String(n).padStart(2, "0");
 
-// Capital & Compute prints the same DDR4 readings on two pages: a table headed
-// "Reading date" and "Spot price", and one headed "Week" and "DDR4 1Gx8 spot".
-export function ddr4History(html, url) {
-  const table = tables(html).find((t) => (t.head[0] === "Reading date" && t.head[1] === "Spot price") || (t.head[0] === "Week" && t.head[1] === "DDR4 1Gx8 spot"));
-  if (!table || table.rows.length < 2) throw new Error("The DDR4 readings table was not found");
-  return table.rows.map((cells) => {
-    const date = cells[0].match(/^([A-Z][a-z]{2}) (\d{1,2}), (\d{4})$/);
-    const price = dollars(cells[1]);
-    if (!date || !MONTHS[date[1]] || price == null) throw new Error(`Unreadable DDR4 reading: ${cells.join(" | ")}`);
-    return {
-      date: `${date[3]}-${two(MONTHS[date[1]])}-${two(date[2])}`,
-      price,
-      item: "DDR4 1Gx8 3200 spot",
-      source_name: "Capital & Compute, from TrendForce and DRAMeXchange readings",
-      source_url: url,
-    };
-  }).sort(byDate);
-}
-
 // Capital & Compute: the table headed "Date", "Cheapest tracked", "Average listing".
 export function kitRetail(html, url) {
   const table = tables(html).find((t) => t.head[0] === "Date" && t.head[1] === "Cheapest tracked" && t.head[2] === "Average listing");
@@ -108,36 +89,6 @@ export function kitRetail(html, url) {
       source_url: url,
     };
   }).sort(byDate);
-}
-
-// ComputingForGeeks: the current-generation table. Its date is in a column
-// heading with no year, read as the latest such day that is not after `today`.
-export function gpuStreet(html, url, today = new Date()) {
-  const table = tables(html).find((t) => t.head[0] === "Card" && t.head.includes("MSRP") && t.head.includes("Great price") && t.head.some((h) => /^Lowest new, /.test(h)));
-  if (!table || !table.rows.length) throw new Error("The current-generation price table was not found");
-  const col = table.head.findIndex((h) => /^Lowest new, /.test(h));
-  const stamp = table.head[col].match(/^Lowest new, ([A-Z][a-z]{2})[a-z]* (\d{1,2})$/);
-  if (!stamp || !MONTHS[stamp[1]]) throw new Error(`Unreadable date in the heading: ${table.head[col]}`);
-  let day = new Date(Date.UTC(today.getUTCFullYear(), MONTHS[stamp[1]] - 1, Number(stamp[2])));
-  if (day - today > 864e5) day = new Date(Date.UTC(today.getUTCFullYear() - 1, MONTHS[stamp[1]] - 1, Number(stamp[2])));
-  const observed = day.toISOString().slice(0, 10);
-  return table.rows.map((cells) => {
-    const msrp = dollars(cells[table.head.indexOf("MSRP")]);
-    const priced = cells[col].match(/^(\$[\d,.]+) \(([+-]?\d+(\.\d+)?)%, (.+)\)$/);
-    if (msrp == null || (!priced && cells[col] !== "No new stock")) throw new Error(`Unreadable graphics card row: ${cells.slice(0, col + 1).join(" | ")}`);
-    return {
-      card: cells[0],
-      brand: /^RTX/.test(cells[0]) ? "NVIDIA" : /^RX/.test(cells[0]) ? "AMD" : /^Arc/.test(cells[0]) ? "Intel" : "",
-      vram: cells[table.head.indexOf("VRAM")],
-      msrp,
-      street: priced ? dollars(priced[1]) : null,
-      premium_pct: priced ? Number(priced[2]) : null,
-      seller: priced ? priced[4] : "No new stock",
-      observed,
-      source_name: "ComputingForGeeks, from the Amazon product API, US store",
-      source_url: url,
-    };
-  });
 }
 
 // TechFuelHQ: the table of published index rows.
@@ -158,12 +109,104 @@ export function gpuIndex(html, url) {
   }).sort(byDate);
 }
 
-// A dated series keeps every reading it has: a new one replaces the row with
-// the same date, is added when it is newer than the last, and is dropped
-// when it is older.
-export function withReading(series, reading) {
-  const last = series.at(-1);
-  if (!last || reading.date > last.date) return [...series, reading];
-  if (reading.date === last.date) return [...series.slice(0, -1), reading];
-  return series;
+// The spot board items the page follows, by the name TrendForce prints today,
+// with the board each is on.
+export const BOARD_ITEMS = {
+  "DDR5 16Gb (2Gx8) 4800/5600": "DRAM spot", "DDR5 16Gb (2Gx8) eTT": "DRAM spot", "DDR4 16Gb (2Gx8) 3200": "DRAM spot",
+  "DDR4 16Gb (2Gx8) eTT": "DRAM spot", "DDR4 8Gb (1Gx8) 3200": "DRAM spot", "DDR4 8Gb (1Gx8) eTT": "DRAM spot",
+  "DDR3 4Gb 512Mx8 1600/1866": "DRAM spot", "DDR5 UDIMM 16GB 4800/5600": "Module spot", "DDR4 UDIMM 16GB 3200": "Module spot",
+  "GDDR6 8Gb": "GDDR spot", "512Gb TLC": "NAND wafer spot",
+};
+// Names the board printed for the same items in earlier years.
+export const BOARD_ALIASES = {
+  "DDR5 16G (2Gx8) 4800/5600": "DDR5 16Gb (2Gx8) 4800/5600",
+  "DDR5 16G (2Gx8) eTT": "DDR5 16Gb (2Gx8) eTT",
+  "DDR4 16Gb (2Gx8)3200": "DDR4 16Gb (2Gx8) 3200",
+};
+// A copy without one of these is not the board, so it is refused whole.
+const BOARD_CORE = ["DDR5 16Gb (2Gx8) 4800/5600", "DDR4 8Gb (1Gx8) 3200", "512Gb TLC", "GDDR6 8Gb"];
+
+// One live board row as a dated reading in the history.
+export const boardReading = (row) => ({
+  series: row.item, item: row.item, board: row.board, date: row.as_of, price: row.session_avg,
+  source_name: row.source_name, source_url: row.source_url,
+});
+
+// The DRAMeXchange home page as the Internet Archive kept it: the same spot
+// board, with each table under its own "Last Update: Jul.1 2025" line. Every
+// reading takes the date of its own table, never the date of the copy.
+// `stamp` is the archive's 14-digit time for the copy.
+export function boardArchive(html, url, stamp) {
+  const taken = `${stamp.slice(0, 4)}-${stamp.slice(4, 6)}-${stamp.slice(6, 8)}`;
+  const rows = [];
+  let seen = null;
+  for (const table of tables(html)) {
+    const priced = table.rows.filter((cells) => BOARD_ITEMS[BOARD_ALIASES[cells[0]] || cells[0]]);
+    if (!priced.length) {
+      const stamped = [table.head, ...table.rows].flat().join(" ").match(/Last Update:?\s*([A-Z][a-z]{2})\.\s?(\d{1,2}) (\d{4})/);
+      if (stamped && MONTHS[stamped[1]]) seen = `${stamped[3]}-${two(MONTHS[stamped[1]])}-${two(stamped[2])}`;
+      continue;
+    }
+    const column = table.head.indexOf("Session Average");
+    for (const cells of priced) {
+      const series = BOARD_ALIASES[cells[0]] || cells[0];
+      const price = column < 0 ? null : dollars(cells[column]);
+      if (price == null || !seen) throw new Error(`Archived board row ${cells[0]} has no price or no Last Update date`);
+      const days = (Date.parse(taken) - Date.parse(seen)) / 864e5;
+      if (days < -1 || days > 45) throw new Error(`Archived board row ${cells[0]} is dated ${seen} in a copy taken ${taken}`);
+      rows.push({
+        series, item: cells[0], board: BOARD_ITEMS[series], date: seen, price,
+        source_name: "DRAMeXchange spot board, Internet Archive copy", source_url: url, captured: stamp,
+      });
+    }
+  }
+  const missing = BOARD_CORE.filter((item) => !rows.some((row) => row.series === item));
+  if (missing.length) throw new Error(`Not on the archived board: ${missing.join(", ")}`);
+  return rows;
+}
+
+// Tom's Hardware GPU price tracker: every table headed "GPU Model",
+// "Best US Price", "Lowest-Ever U.S. Price", "MSRP Launch Price". The tables
+// carry no date, and the prices change only when the article does (two
+// archived copies with the same modified time hold the same prices), so a
+// reading is dated by the article's modified time, or its published time on
+// the day it first appeared. `stamp` marks an Internet Archive copy.
+const CURRENT_CARDS = /^(GeForce RTX 50\d\d|Radeon RX 90\d\d|Intel Arc B\d)/;
+export function gpuTracker(html, url, stamp = null) {
+  const found = tables(html).filter((t) => t.head[0] === "GPU Model" && t.head[1] === "Best US Price" && t.head[3] === "MSRP Launch Price");
+  if (!found.length) throw new Error("The graphics card price tables were not found");
+  const stated = (name) => (html.match(new RegExp(`<meta[^>]+property="article:${name}"[^>]+content="(\\d{4}-\\d{2}-\\d{2})T`)) || [])[1];
+  const date = stated("modified_time") || stated("published_time");
+  if (!date) throw new Error("The graphics card page does not say when it was last changed");
+  if (stamp && date > `${stamp.slice(0, 4)}-${stamp.slice(4, 6)}-${stamp.slice(6, 8)}`) throw new Error(`The graphics card page is dated ${date}, after the copy was taken`);
+  const rows = found.flatMap((table) => table.rows.map((cells) => {
+    const msrp = dollars(cells[3]), price = dollars(cells[1]), lowest = dollars(cells[2]);
+    if (!cells[0] || msrp == null || lowest == null || (price == null && cells[1] !== "Out of Stock")) throw new Error(`Unreadable graphics card row: ${cells.join(" | ")}`);
+    const row = {
+      series: cells[0], card: cells[0],
+      brand: /^GeForce/.test(cells[0]) ? "NVIDIA" : /^Radeon/.test(cells[0]) ? "AMD" : /^Intel/.test(cells[0]) ? "Intel" : "",
+      current: CURRENT_CARDS.test(cells[0]),
+      msrp, price, lowest_ever: lowest, date,
+      source_name: stamp ? "Tom's Hardware GPU price tracker, Internet Archive copy" : "Tom's Hardware GPU price tracker",
+      source_url: url,
+    };
+    if (stamp) row.captured = stamp;
+    return row;
+  }));
+  if (rows.filter((row) => row.current).length < 8) throw new Error("Fewer than 8 current-generation cards were found");
+  return rows;
+}
+
+// Two sets of dated readings as one, a row per series and date. A reading
+// read live replaces an archived one for the same day, and of two archived
+// copies the later one stands. Sorted by date, then series.
+export function unionReadings(have, add) {
+  const rank = (row) => (row.captured ? "0" + row.captured : "1");
+  const kept = new Map();
+  for (const row of [...have, ...add]) {
+    const key = row.series + "|" + row.date;
+    const old = kept.get(key);
+    if (!old || rank(row) >= rank(old)) kept.set(key, row);
+  }
+  return [...kept.values()].sort((a, b) => byDate(a, b) || (a.series < b.series ? -1 : a.series > b.series ? 1 : 0));
 }
