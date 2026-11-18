@@ -224,12 +224,69 @@ test("every key price gets the same four periods from its own readings", async (
   assert.equal(periods([]), null);
 });
 
-test("a verdict says where the price stands against its reference and which way it moved this month", async () => {
-  const { level, verdict } = await rules();
-  assert.deepEqual([652, 100, 99.9, 25, 24.9, 5, 4.9, -4.9, -5, -25].map(level), ["Far above", "Far above", "Well above", "Well above", "Above", "Above", "Close to", "Close to", "Below", "Well below"]);
-  assert.deepEqual(verdict(652, -1.9, "a year ago"), { level: "Far above a year ago", level_tone: "bad", move: "Falling this month", move_tone: "good" });
-  assert.deepEqual(verdict(-30, 0.4, "launch prices"), { level: "Well below launch prices", level_tone: "good", move: "Steady this month", move_tone: "" });
-  assert.deepEqual(verdict(null, null, "a year ago"), { level: null, level_tone: "", move: null, move_tone: "" });
+test("the high is the highest reading held, on the first day it was reached", async () => {
+  const { high } = await rules();
+  const readings = [{ date: "2026-03-16", value: 23 }, { date: "2026-01-05", value: 13.724 }, { date: "2026-11-09", value: 14.267 }, { date: "2026-03-23", value: 23 }];
+  assert.deepEqual(high(readings), { value: 23, date: "2026-03-16", below_pct: -38 });
+  assert.equal(high([{ date: "2026-11-16", value: 429 }, { date: "2026-10-31", value: 429 }]).below_pct, 0);
+  assert.equal(high([]), null);
+});
+
+test("a verdict places a price in its cycle from its distance below the high and its last month against the last three", async () => {
+  const { cycle } = await rules();
+  assert.deepEqual(cycle(-1.9, -0.5, 11.4), { text: "Stalled at its high", tone: "" });
+  assert.deepEqual(cycle(-2, 0.2, 1.5), { text: "Holding at its high", tone: "" });
+  assert.deepEqual(cycle(0, 0, null), { text: "Holding at its high", tone: "" });
+  assert.deepEqual(cycle(0, 8.3, null), { text: "Still climbing", tone: "bad" });
+  assert.deepEqual(cycle(-1.5, -1.2, 4), { text: "Turning down from its high", tone: "good" });
+  assert.deepEqual(cycle(-2.1, 0.5, 6), { text: "Holding below its high", tone: "" });
+  assert.deepEqual(cycle(-6.1, -3.7, 2.2), { text: "Coming off its high", tone: "good" });
+  assert.deepEqual(cycle(-6, 2, -3), { text: "Climbing back toward its high", tone: "bad" });
+  assert.deepEqual(cycle(-38, -24.2, -29.1), { text: "Past its peak and falling faster", tone: "good" });
+  assert.deepEqual(cycle(-38, -9, -29.1), { text: "Past its peak and falling", tone: "good" });
+  assert.deepEqual(cycle(-10, -5, null), { text: "Past its peak and falling", tone: "good" });
+  assert.deepEqual(cycle(-15.4, 0.3, -13.4), { text: "Past its peak, holding", tone: "" });
+  assert.deepEqual(cycle(-20, 4, -5), { text: "Past its peak, rising again", tone: "bad" });
+  assert.deepEqual([cycle(0, null, null), cycle(-5, null, null), cycle(-30, null, 3)].map((v) => v.text + v.tone), ["At its high", "Below its high", "Past its peak"]);
+});
+
+test("DDR4 is set against DDR5 by the gigabit, on the latest and the first day both were read", async () => {
+  const { gigabit } = await rules();
+  const got = gigabit(
+    [{ date: "2024-12-31", value: 1.464 }, { date: "2026-11-17", value: 44.25 }, { date: "2026-11-18", value: 44.207 }],
+    [{ date: "2024-12-31", value: 4.686 }, { date: "2026-11-17", value: 60.333 }],
+  );
+  assert.deepEqual(got.now, { date: "2026-11-17", ddr4: 44.25 / 8, ddr5: 60.333 / 16, pct: 46.7 });
+  assert.deepEqual([got.first.date, got.first.pct], ["2024-12-31", -37.5]);
+  assert.equal(gigabit([{ date: "2026-11-17", value: 1 }], [{ date: "2026-11-18", value: 1 }]), null);
+});
+
+test("the graphics card premium is split by launch price and by memory size", async () => {
+  const { cardSplit } = await rules();
+  const card = (name, msrp, price, current = true) => ({ card: name, msrp, price, current });
+  const got = cardSplit([
+    card("GeForce RTX 5090", 1999, 6549), card("GeForce RTX 5080", 999, 2235), card("GeForce RTX 5070", 549, 869),
+    card("GeForce RTX 5060 Ti 16GB", 429, 799), card("GeForce RTX 5060 Ti 8GB", 379, 499), card("Intel Arc B580", 250, null), card("GeForce RTX 4090", 1599, 4999, false),
+  ]);
+  assert.deepEqual(got.top, { pct: 175.7, cards: 2 });
+  assert.deepEqual(got.entry, { pct: 31.7, cards: 1 });
+  assert.deepEqual(got.pairs, [{ card: "GeForce RTX 5060 Ti", big_gb: 16, big_pct: 86.2, small_gb: 8, small_pct: 31.7 }]);
+  assert.deepEqual(cardSplit([]), { top: { pct: null, cards: 0 }, entry: { pct: null, cards: 0 }, pairs: [] });
+});
+
+test("the build cost pairs the kit with one card, now and on the first day the card has a price", async () => {
+  const { basket } = await rules();
+  const kit = [{ date: "2025-12-07", value: 126 }, { date: "2026-02-21", value: 150 }, { date: "2026-11-16", value: 429 }];
+  const cards = [
+    { series: "GeForce RTX 5070", date: "2026-01-23", price: 549 }, { series: "GeForce RTX 5070", date: "2026-06-04", price: null },
+    { series: "GeForce RTX 5070", date: "2026-11-17", price: 869 }, { series: "GeForce RTX 5090", date: "2026-01-01", price: 3000 },
+  ];
+  assert.deepEqual(basket(kit, cards, "GeForce RTX 5070"), {
+    now: { card: 869, card_date: "2026-11-17", kit: 429, kit_date: "2026-11-16", total: 1298 },
+    then: { card: 549, card_date: "2026-01-23", kit: 150, kit_date: "2026-02-21", total: 699 },
+    more: 599, pct: 85.7,
+  });
+  assert.equal(basket(kit, cards, "GeForce RTX 5090"), null, "one priced day is not a comparison");
 });
 
 test("graphics cards: the level is the median premium, a period the median of each card's own change", async () => {
