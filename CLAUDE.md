@@ -76,8 +76,13 @@ read by anyone.
 - No thin line separators; space and fill separate.
 - No chips, pills, arrows, gradients, glows, count-ups or moving text.
 - The page is read by sales people in a hurry. Market health comes first: a
-  verdict per market that says where the price stands against a year ago
-  and which way it moved this month, and names the price it rests on. Then
+  verdict per market on where its price is in its cycle (at its high,
+  stalled, past its peak, falling faster), then the figures it rests on,
+  each with its date. Never lead with how far prices are above last year:
+  the reader knows that from the news (owner, 2026-11-18). Under the
+  verdicts, Worth knowing holds comparisons the single prices do not show
+  (DDR4 against DDR5 by the gigabit, where the card premium sits, what a
+  kit and a card cost together). Then
   the key prices table: one row per price, the same period in the same
   column every time, a plain name before the exact item name.
 - Periods are fixed: 1 week, 1 month, 3 months, 1 year, each against the
@@ -87,8 +92,9 @@ read by anyone.
   at zero, so a short record looks short and a rise looks its real size.
 - Colour means one thing: green is cheaper for builders, red is dearer. It
   always sits with a sign or a word. Charts and bars use one neutral ink.
-- Every rule that judges a number (Falling, Rising, Steady, the levels in a
-  verdict, which reading a period compares with, the card medians) is in
+- Every rule that judges a number (Falling, Rising, Steady, the cycle
+  verdicts, which reading a period compares with, the card medians and the
+  Worth knowing comparisons) is in
   `site/rules.js` and is tested. Do not judge a number anywhere else.
 - Before rewording a string, ask whether it should exist at all.
 

@@ -1,0 +1,68 @@
+[
+ {
+  "kit": "16GB DDR5 (2x8GB)",
+  "capacity_gb": 16,
+  "type": "DDR5",
+  "price_low": 297,
+  "price_high": 297,
+  "per_gb_low": 18.56,
+  "per_gb_high": 18.56,
+  "source_name": "Capital & Compute, retail prices by capacity",
+  "source_url": "https://capitalandcompute.net/memory-prices/"
+ },
+ {
+  "kit": "32GB DDR5 (2x16GB)",
+  "capacity_gb": 32,
+  "type": "DDR5",
+  "price_low": 429,
+  "price_high": 600,
+  "per_gb_low": 13.41,
+  "per_gb_high": 18.75,
+  "source_name": "Capital & Compute, retail prices by capacity",
+  "source_url": "https://capitalandcompute.net/memory-prices/"
+ },
+ {
+  "kit": "64GB DDR5 (2x32GB)",
+  "capacity_gb": 64,
+  "type": "DDR5",
+  "price_low": 1360,
+  "price_high": 1360,
+  "per_gb_low": 21.25,
+  "per_gb_high": 21.25,
+  "source_name": "Capital & Compute, retail prices by capacity",
+  "source_url": "https://capitalandcompute.net/memory-prices/"
+ },
+ {
+  "kit": "16GB DDR4 (2x8GB)",
+  "capacity_gb": 16,
+  "type": "DDR4",
+  "price_low": 130,
+  "price_high": 130,
+  "per_gb_low": 8.12,
+  "per_gb_high": 8.12,
+  "source_name": "Capital & Compute, retail prices by capacity",
+  "source_url": "https://capitalandcompute.net/memory-prices/"
+ },
+ {
+  "kit": "32GB DDR4 (2x16GB)",
+  "capacity_gb": 32,
+  "type": "DDR4",
+  "price_low": 129,
+  "price_high": 257,
+  "per_gb_low": 4.03,
+  "per_gb_high": 8.03,
+  "source_name": "Capital & Compute, retail prices by capacity",
+  "source_url": "https://capitalandcompute.net/memory-prices/"
+ },
+ {
+  "kit": "64GB DDR4 (2x32GB)",
+  "capacity_gb": 64,
+  "type": "DDR4",
+  "price_low": 552,
+  "price_high": 552,
+  "per_gb_low": 8.62,
+  "per_gb_high": 8.62,
+  "source_name": "Capital & Compute, retail prices by capacity",
+  "source_url": "https://capitalandcompute.net/memory-prices/"
+ }
+]

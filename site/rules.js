@@ -47,11 +47,6 @@
     return out;
   }
 
-  // Where a price stands against its reference: the same price a year ago,
-  // or the launch price for a graphics card.
-  const level = (pct) => (pct >= 100 ? "Far above" : pct >= 25 ? "Well above" : pct >= 5 ? "Above" : pct > -5 ? "Close to" : pct > -25 ? "Below" : "Well below");
-  const levelMeaning = (pct) => (pct >= 5 ? "bad" : pct <= -5 ? "good" : "");
-
   const median = (values) => {
     const sorted = values.slice().sort((a, b) => a - b), mid = sorted.length >> 1;
     if (!sorted.length) return null;
@@ -83,16 +78,83 @@
     return out;
   }
 
-  // The two halves of a verdict. `levelPct` is the price against its
-  // reference, `monthPct` its change over the last month; either may be null.
-  function verdict(levelPct, monthPct, reference) {
-    return {
-      level: levelPct == null ? null : level(levelPct) + " " + reference,
-      level_tone: levelPct == null ? "" : levelMeaning(levelPct),
-      move: monthPct == null ? null : direction(monthPct) + " this month",
-      move_tone: monthPct == null ? "" : meaning(monthPct),
-    };
+  // Where a price is in its cycle. `readings` are { date, value }; the high is
+  // the highest reading held, and the first day it was reached.
+  function high(readings) {
+    const rows = readings.filter((r) => r.value != null).slice().sort((a, b) => (a.date < b.date ? -1 : 1));
+    if (!rows.length) return null;
+    const top = rows.reduce((a, b) => (b.value > a.value ? b : a)), last = rows[rows.length - 1];
+    return { value: top.value, date: top.date, below_pct: change(last.value, top.value) };
   }
 
-  root.mmRules = { direction, meaning, PERIODS, back, change, periods, level, levelMeaning, median, cardStats, verdict };
+  // The verdict on a market, from three figures: how far the price is below
+  // its high, its change over the last month and over the last three.
+  // Within 2% of the high is at it; 10% or more below is past its peak.
+  // A fall is faster when more than half of the three-month fall came in the
+  // last month. A price at its high that rose 3% or more in three months and
+  // is now steady has stalled. A price at its high that rose over the month
+  // but not over the last week is holding, not climbing.
+  function cycle(belowPct, monthPct, quarterPct, weekPct = null) {
+    const at = belowPct >= -2, past = belowPct <= -10;
+    const move = monthPct == null ? null : direction(monthPct);
+    // A month's rise that has stopped: the price is at its high and has not risen in the last week.
+    const paused = weekPct != null && direction(weekPct) !== "Rising";
+    const tone = monthPct == null ? "" : meaning(monthPct);
+    const faster = quarterPct != null && quarterPct < 0 && monthPct < quarterPct / 2;
+    let text;
+    if (move === null) text = at ? "At its high" : past ? "Past its peak" : "Below its high";
+    else if (at) text = move === "Rising" ? (paused ? "Up this month, now holding at its high" : "Still climbing") : move === "Falling" ? "Turning down from its high" : quarterPct != null && quarterPct >= 3 ? "Stalled at its high" : "Holding at its high";
+    else if (past) text = move === "Falling" ? (faster ? "Past its peak and falling faster" : "Past its peak and falling") : move === "Rising" ? "Past its peak, rising again" : "Past its peak, holding";
+    else text = move === "Rising" ? "Climbing back toward its high" : move === "Falling" ? "Coming off its high" : "Holding below its high";
+    return { text, tone };
+  }
+
+  // DDR4 against DDR5 by the gigabit, from the 8Gb and 16Gb chip readings.
+  // Compared on the latest day both have a reading, and on the first.
+  function gigabit(ddr4, ddr5) {
+    const five = new Map(ddr5.map((r) => [r.date, r.value]));
+    const both = ddr4.filter((r) => five.has(r.date)).sort((a, b) => (a.date < b.date ? -1 : 1));
+    if (!both.length) return null;
+    const on = (r) => ({ date: r.date, ddr4: r.value / 8, ddr5: five.get(r.date) / 16, pct: change(r.value / 8, five.get(r.date) / 16) });
+    return { now: on(both[both.length - 1]), first: on(both[0]) };
+  }
+
+  // The same capacity in DDR4 and DDR5 at shop prices, from rows of
+  // { capacity_gb, type, price_low, price_high }. One is cheaper only when
+  // its whole range lies below the other's.
+  function kitGap(sizes, capacity) {
+    const of = (type) => sizes.find((r) => r.capacity_gb === capacity && r.type === type);
+    const ddr4 = of("DDR4"), ddr5 = of("DDR5");
+    if (!ddr4 || !ddr5) return null;
+    return { capacity, ddr4, ddr5, cheaper: ddr4.price_high < ddr5.price_low ? "DDR4" : ddr5.price_high < ddr4.price_low ? "DDR5" : null };
+  }
+
+  // Where the premium on graphics cards sits, from one day's current cards
+  // with a price: the median over MSRP for cards launched at $800 or more and
+  // for cards under $400, and each card sold in two memory sizes.
+  function cardSplit(rows) {
+    const priced = rows.filter((r) => r.current && r.price != null).map((r) => ({ ...r, premium_pct: change(r.price, r.msrp) }));
+    const tier = (list) => ({ pct: median(list.map((r) => r.premium_pct)), cards: list.length });
+    const sized = priced.map((r) => ({ r, m: r.card.match(/^(.*) (\d+)GB$/) })).filter((x) => x.m);
+    const pairs = [];
+    for (const big of sized) {
+      const small = sized.find((x) => x.m[1] === big.m[1] && +x.m[2] < +big.m[2]);
+      if (small) pairs.push({ card: big.m[1], big_gb: +big.m[2], big_pct: big.r.premium_pct, small_gb: +small.m[2], small_pct: small.r.premium_pct });
+    }
+    return { top: tier(priced.filter((r) => r.msrp >= 800)), entry: tier(priced.filter((r) => r.msrp < 400)), pairs };
+  }
+
+  // What a kit and one named card cost together now, and on the first day
+  // the card has a price, with the kit reading nearest to that day.
+  function basket(kit, cards, name) {
+    const mine = cards.filter((r) => r.series === name && r.price != null).sort((a, b) => (a.date < b.date ? -1 : 1));
+    const kits = kit.filter((r) => r.value != null).slice().sort((a, b) => (a.date < b.date ? -1 : 1));
+    if (mine.length < 2 || !kits.length) return null;
+    const near = (date) => kits.reduce((a, b) => (Math.abs(Date.parse(b.date) - Date.parse(date)) < Math.abs(Date.parse(a.date) - Date.parse(date)) ? b : a));
+    const pair = (card, k) => ({ card: card.price, card_date: card.date, kit: k.value, kit_date: k.date, total: card.price + k.value });
+    const now = pair(mine[mine.length - 1], kits[kits.length - 1]), then = pair(mine[0], near(mine[0].date));
+    return { now, then, more: now.total - then.total, pct: change(now.total, then.total) };
+  }
+
+  root.mmRules = { direction, meaning, PERIODS, back, change, periods, median, cardStats, high, cycle, gigabit, kitGap, cardSplit, basket };
 })(typeof window !== "undefined" ? window : globalThis);

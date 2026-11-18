@@ -23,9 +23,13 @@
   <section class="mm-sec" id="health">
     <div class="mm-sechead">
       <h2 class="mm-h2">Market health</h2>
-      <p class="mm-muted">Where each price stands against a year ago, and which way it moved this month. Green is cheaper for builders, red is dearer.</p>
+      <p class="mm-muted">Where each price is in its cycle: how far from its high, and this month against the last three. Green is cheaper for builders, red is dearer.</p>
     </div>
     <div class="mm-health mm-loading" data-draw="health"></div>
+    <div class="mm-card" id="worth-knowing">
+      <h3 class="mm-h3">Worth knowing</h3>
+      <ul class="mm-worth mm-loading" data-draw="worth"></ul>
+    </div>
   </section>
 
   <section class="mm-sec" id="key-prices">
@@ -116,7 +120,8 @@
   <details class="mm-notes" id="notes">
     <summary>How to read these numbers</summary>
     <ul>
-      <li>A verdict has two halves. The first compares the price with the same price a year ago: Far above is double or more, Well above is 25% or more, Above is 5% or more. For graphics cards the comparison is with launch prices. The second half is the change over the last month.</li>
+      <li>A verdict says where a price is in its cycle. A price within 2% of its high is at it, and one 10% or more below is past its peak. Stalled means it rose 3% or more in three months and is steady this month. A price that rose over the month but not over the last week is holding at its high. Falling faster means more than half of the three-month fall came in the last month. The high is the highest reading this page holds, which starts in January 2025 for spot prices, April 2025 for the kit and January 2026 for graphics cards.</li>
+      <li>By the gigabit, a DDR4 8Gb chip price is divided by 8 and a DDR5 16Gb chip price by 16. The build cost pairs the cheapest 32GB kit with the best US price of one card, and compares it with the first day that card has a price here and the kit reading nearest to that day.</li>
       <li>A change of 1% or more reads Rising or Falling, and less reads Steady. Green and red say what a move means for someone building a PC. They are not a forecast.</li>
       <li>Each period compares the latest reading with the one nearest to that many days earlier. It reads No reading when none lies within 3 days for a week, 10 for a month, 15 for three months or 31 for a year. Hold the pointer over a figure for the earlier price and its date.</li>
       <li>Spot is the open-market price for immediate delivery. Retail is what a builder pays.</li>
@@ -124,6 +129,7 @@
       <li>TrendForce prints its spot boards without a currency. Outlets quoting the same boards report US dollars, and this page follows them.</li>
       <li>The graphics card figure is the median over current-generation cards in stock on Tom's Hardware's tracker. A period figure is the median of each card's own price change. The tracker began in January 2026, so there is no year figure yet.</li>
       <li>Kit prices are listings aggregated by WhereIsMyRAM, which resamples its own history on each refresh.</li>
+      <li>Shop prices by capacity are Capital &amp; Compute's ranges across two retail trackers. The table carries no date, so they stand as of the last read.</li>
       <li>The Newegg index is a pilot. RTX 5090 had no qualifying Newegg offer and is outside it.</li>
       <li>The forecasts are saved readings from TrendForce press releases.</li>
     </ul>

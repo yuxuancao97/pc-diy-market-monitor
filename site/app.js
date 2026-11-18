@@ -58,21 +58,43 @@
 
   dash.calc('health', {
     title: 'Market health',
-    description: 'For each market, where its lead price stands against a year ago (launch price for graphics cards) and which way it moved in the last month.',
+    description: 'For each market, where its lead price is in its cycle: how far below its high, and its change over the last month against the last three.',
     inputs: ['key_prices'],
     fn: (keys) => {
       const of = (id) => keys.find((k) => k.id === id);
+      const chips = of('ddr5');
       const made = (market, key, basis) => {
         if (!key) return null;
-        const v = key.over ? R.verdict(key.latest, key.m1 && key.m1.pct, 'launch prices') : R.verdict(key.y1 && key.y1.pct, key.m1 && key.m1.pct, 'a year ago');
-        return { market, basis, id: key.id, ...v, key };
+        // A premium over MSRP is turned into a price level, 100 at MSRP, before it is compared with its high.
+        const top = R.high(key.points.map((p) => ({ date: p.date, value: key.over ? 100 + p.value : p.value })));
+        return { market, basis, id: key.id, key, high: top, high_value: key.over ? top.value - 100 : top.value, ...R.cycle(top.below_pct, key.m1 ? key.m1.pct : null, key.m3 ? key.m3.pct : null, key.w1 ? key.w1.pct : null) };
       };
-      return [
-        made('Memory chips', of('ddr5'), 'DDR5 16Gb chip, spot'),
+      const rows = [
+        made('Memory chips', chips, 'DDR5 16Gb chip, spot'),
         made('Memory in shops', of('kit'), '32GB DDR5 kit, cheapest listing'),
         made('Storage', of('nand'), '512Gb TLC flash wafer, spot'),
         made('Graphics cards', of('gpu'), 'Median current card'),
       ].filter(Boolean);
+      // Shop memory is read beside the chips it is built from.
+      const shops = rows.find((r) => r.id === 'kit');
+      if (shops && chips && chips.m1) shops.beside = { label: 'DDR5 chip', pct: chips.m1.pct, from_date: chips.m1.from_date };
+      return rows;
+    },
+  });
+
+  const CARD = 'GeForce RTX 5070';
+  dash.calc('worth_knowing', {
+    title: 'Three comparisons across markets',
+    description: 'DDR4 against DDR5 by the gigabit, where the graphics card premium sits, and what a kit and one card cost together.',
+    inputs: ['spot_history', 'ddr5_kit_retail', 'gpu_history', 'gpu_latest', 'kit_sizes'],
+    fn: (spot, kit, cards, latest, sizes) => {
+      const series = (name) => spot.filter((r) => r.series === name).map((r) => ({ date: r.date, value: r.price }));
+      return [{
+        gigabit: R.gigabit(series('DDR4 8Gb (1Gx8) 3200'), series('DDR5 16Gb (2Gx8) 4800/5600')),
+        shops: R.kitGap(sizes, 32),
+        split: R.cardSplit(latest),
+        basket: R.basket(kit.map((r) => ({ date: r.date, value: r.cheapest })), cards, CARD),
+      }];
     },
   });
 
@@ -137,21 +159,65 @@
     node.textContent = v == null ? '' : (F[node.dataset.fmt] || String)(v);
   });
 
-  // Market health: a verdict per market, each naming the price it rests on.
+  // Market health: a verdict per market on where its price is in its cycle,
+  // then the figures the verdict rests on, each with its date.
   dash.draw('health', (box) => {
     const got = rowsOf(box, ['health']);
     if (!got) return;
+    const unsigned = (v) => Math.abs(v).toFixed(1) + '%';
     box.replaceChildren(...got[0].map((h) => {
       const k = h.key, card = el('div', 'mm-verdict');
       card.append(el('p', 'mm-verdict-market', h.market));
-      card.append(el('p', h.level ? 'mm-verdict-level' + tone(h.level_tone) : 'mm-verdict-none', h.level || 'No reading a year ago'));
-      card.append(el('p', h.move ? 'mm-verdict-move' + tone(h.move_tone) : 'mm-verdict-none', h.move || 'No reading a month ago'));
-      const facts = [h.basis + ': ' + level(k, k.latest) + ' on ' + F.date(k.latest_date) + '.'];
-      if (!k.over && k.y1) facts.push(F.pct1(k.y1.pct) + ' since ' + F.dateY(k.y1.from_date) + '.');
-      if (k.m1) facts.push(F.pct1(k.m1.pct) + ' since ' + F.date(k.m1.from_date) + '.');
-      card.append(el('p', 'mm-verdict-basis', facts.join(' ')));
+      card.append(el('p', 'mm-verdict-level' + tone(h.tone), h.text));
+      const facts = el('ul', 'mm-verdict-facts');
+      const fact = (text, cls) => facts.append(el('li', cls || '', text));
+      fact(h.basis + ': ' + level(k, k.latest) + ' on ' + F.date(k.latest_date));
+      const top = level(k, h.high_value) + ' on ' + F.date(h.high.date);
+      fact(h.high.below_pct === 0 ? 'Its highest reading, first reached ' + F.date(h.high.date) : unsigned(h.high.below_pct) + ' below its high of ' + top);
+      if (k.w1) fact(F.pct1(k.w1.pct) + ' this week, since ' + F.date(k.w1.from_date));
+      fact(k.m1 ? F.pct1(k.m1.pct) + ' this month, since ' + F.date(k.m1.from_date) : 'No reading a month ago');
+      if (k.m3) fact(F.pct1(k.m3.pct) + ' in three months, since ' + F.date(k.m3.from_date));
+      if (h.beside) fact(h.beside.label + ' over the same month: ' + F.pct1(h.beside.pct));
+      if (!k.over && k.y1) fact(F.pct1(k.y1.pct) + ' in a year, since ' + F.dateY(k.y1.from_date), 'mm-dim');
+      card.append(facts);
       return card;
     }));
+  });
+
+  // Worth knowing: three comparisons that the single prices do not show.
+  dash.draw('worth', (list) => {
+    const got = rowsOf(list, ['worth_knowing']);
+    if (!got) return;
+    const { gigabit, shops, split, basket } = got[0][0], items = [];
+    const item = (lead, detail) => {
+      const li = el('li', 'mm-worth-item');
+      li.append(el('p', 'mm-worth-lead', lead), el('p', 'mm-worth-detail', detail));
+      items.push(li);
+    };
+    const usd2 = (v) => '$' + v.toFixed(2);
+    if (gigabit) {
+      const n = gigabit.now, f = gigabit.first, word = (pct) => (pct >= 1 ? Math.abs(pct).toFixed(1) + '% more' : pct <= -1 ? Math.abs(pct).toFixed(1) + '% less' : 'the same');
+      const span = (r) => (r.price_low === r.price_high ? F.usd0(r.price_low) : F.usd0(r.price_low) + ' to ' + F.usd0(r.price_high));
+      const chip = n.pct >= 1 ? 'more' : n.pct <= -1 ? 'less' : null;
+      const lead = !chip ? 'DDR4 and DDR5 chips cost the same by the gigabit'
+        : shops && shops.cheaper && (shops.cheaper === 'DDR4') === (chip === 'more') ? 'DDR4 costs ' + chip + ' than DDR5 as a chip, ' + (chip === 'more' ? 'less' : 'more') + ' as a kit in shops'
+          : 'DDR4 chips cost ' + chip + ' than DDR5 by the gigabit on the spot market';
+      item(lead,
+        'Spot chips: ' + usd2(n.ddr4) + ' a gigabit for DDR4 against ' + usd2(n.ddr5) + ' for DDR5, ' + word(n.pct) + ', on ' + F.date(n.date) + '. On ' + F.dateY(f.date) + ' DDR4 cost ' + word(f.pct) + '.'
+        + (shops ? ' Shops: a ' + shops.capacity + 'GB DDR4 kit is ' + span(shops.ddr4) + ' against ' + span(shops.ddr5) + ' for DDR5.' : ''));
+    }
+    if (split && split.top.pct != null && split.entry.pct != null) {
+      const pairs = split.pairs.map((p) => p.card.replace(/^(GeForce|Radeon|Intel) /, '') + ' ' + p.big_gb + 'GB ' + F.pct1(p.big_pct) + ' against ' + F.pct1(p.small_pct) + ' for ' + p.small_gb + 'GB');
+      item(split.top.pct > split.entry.pct ? 'The graphics card premium is largest at the top' : 'The graphics card premium is largest at the entry level',
+        'Median over MSRP: ' + F.pct1(split.top.pct) + ' across the ' + split.top.cards + ' cards launched at $800 or more, ' + F.pct1(split.entry.pct) + ' across the ' + split.entry.cards + ' launched under $400.'
+        + (pairs.length ? ' Where a card is sold in two memory sizes: ' + pairs.join(', ') + '.' : ''));
+    }
+    if (basket) {
+      const name = CARD.replace(/^GeForce /, ''), n = basket.now, t = basket.then;
+      item('A 32GB kit and an ' + name + ' cost ' + F.usd0(n.total) + ' together, ' + F.usd0(Math.abs(basket.more)) + (basket.more >= 0 ? ' more' : ' less') + ' than on ' + F.dateY(t.card_date),
+        'Now: kit ' + F.usd0(n.kit) + ' on ' + F.date(n.kit_date) + ', card ' + F.usd0(n.card) + ' on ' + F.date(n.card_date) + '. Then: kit ' + F.usd0(t.kit) + ' on ' + F.date(t.kit_date) + ', card ' + F.usd0(t.card) + ' on ' + F.date(t.card_date) + ', ' + F.usd0(t.total) + ' together. ' + F.pct1(basket.pct) + '.');
+    }
+    list.replaceChildren(...items);
   });
 
   // The window every trend in the key table is drawn on: the year up to the latest reading of any row.
@@ -459,9 +525,9 @@
   // went. The archived copies of one page are one source, linked to the
   // archive's list of them.
   dash.draw('sources', (list) => {
-    const ids = ['dram_spot', 'nand_wafer_board', 'spot_history', 'ddr5_kit_retail', 'trendforce_outlook', 'gpu_history', 'gpu_index'];
+    const ids = ['dram_spot', 'nand_wafer_board', 'spot_history', 'ddr5_kit_retail', 'kit_sizes', 'trendforce_outlook', 'gpu_history', 'gpu_index'];
     const seen = new Map(), meta = dash.data('meta');
-    if (meta.status === 'ok' && meta.data.sources) meta.data.sources.forEach((s) => seen.set(s.url, s.title));
+    if (meta.status === 'ok' && meta.data.sources) meta.data.sources.forEach((s) => seen.set(s.url, seen.has(s.url) ? seen.get(s.url) + ' and ' + s.title.replace(/^Capital & Compute /, '') : s.title));
     ids.forEach((id) => {
       const got = dash.data(id);
       if (got.status !== 'ok') return;

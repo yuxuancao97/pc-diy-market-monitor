@@ -5,7 +5,7 @@
 import { readFile, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { trendforce, kitRetail, gpuTracker, gpuIndex, boardReading, unionReadings, BOARD_ITEMS } from "./parse.mjs";
+import { trendforce, kitRetail, kitSizes, gpuTracker, gpuIndex, boardReading, unionReadings, BOARD_ITEMS } from "./parse.mjs";
 
 // MM_DATA points the run at another folder, for the tests.
 const DATA = process.env.MM_DATA || fileURLToPath(new URL("../site/data/", import.meta.url));
@@ -18,6 +18,7 @@ export const SOURCES = [
   { id: "dram_spot", title: "TrendForce DRAM, module and GDDR spot boards", url: "https://www.trendforce.com/price/dram/dram_spot", parse: (html, url) => trendforce(html, pick(false), url) },
   { id: "nand_wafer_board", title: "TrendForce NAND wafer spot board", url: "https://www.trendforce.com/price/flash/flash_spot", parse: (html, url) => trendforce(html, pick(true), url) },
   { id: "ddr5_kit_retail", title: "Capital & Compute 32GB DDR5 kit prices", url: "https://capitalandcompute.net/memory-prices/", parse: kitRetail },
+  { id: "kit_sizes", page: "ddr5_kit_retail", title: "Capital & Compute shop prices by capacity", url: "https://capitalandcompute.net/memory-prices/", parse: kitSizes },
   { id: "gpu_cards", title: "Tom's Hardware GPU price tracker", url: "https://www.tomshardware.com/pc-components/gpus/lowest-gpu-prices-tracking", parse: (html, url) => gpuTracker(html, url), keep: false },
   { id: "gpu_index", title: "TechFuelHQ GPU Price Index, CC BY 4.0", url: "https://techfuelhq.com/data/gpu-price-index/", parse: gpuIndex },
 ];
@@ -34,12 +35,13 @@ const saveLines = (name, rows) => writeFile(join(DATA, name + ".json"), "[\n" + 
 
 const read = new Map();
 const page = (source) => {
-  const key = from ? source.id : source.url;
+  const key = from ? source.page || source.id : source.url;
   if (!read.has(key)) read.set(key, fetchPage(source));
   return read.get(key);
 };
 async function fetchPage(source) {
-  if (from) return readFile(join(from, source.id + ".html"), "utf8");
+  // Two sources on one page share its saved copy, named by `page`.
+  if (from) return readFile(join(from, (source.page || source.id) + ".html"), "utf8");
   // A source sometimes refuses the first request from a new address and
   // answers the next one, so a failed read is tried again after a pause.
   let last;
