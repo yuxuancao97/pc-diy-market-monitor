@@ -1,0 +1,57 @@
+[
+ {
+  "metric": "PC DRAM",
+  "kind": "contract",
+  "period": "4Q26",
+  "low_pct": 13,
+  "high_pct": 18,
+  "range_text": "13 to 18%",
+  "published": "2026-11-11",
+  "source_name": "TrendForce press release, Nov 11, 2026",
+  "source_url": "https://www.trendforce.com/presscenter/news/20261111-13303.html"
+ },
+ {
+  "metric": "Conventional DRAM",
+  "kind": "contract",
+  "period": "4Q26",
+  "low_pct": 10,
+  "high_pct": 15,
+  "range_text": "10 to 15%",
+  "published": "2026-09-30",
+  "source_name": "TrendForce press release, Sep 30, 2026",
+  "source_url": "https://www.trendforce.com/presscenter/news/20260930-13258.html"
+ },
+ {
+  "metric": "NAND Flash, overall",
+  "kind": "contract",
+  "period": "4Q26",
+  "low_pct": 15,
+  "high_pct": 20,
+  "range_text": "15 to 20%",
+  "published": "2026-09-30",
+  "source_name": "TrendForce press release, Sep 30, 2026",
+  "source_url": "https://www.trendforce.com/presscenter/news/20260930-13258.html"
+ },
+ {
+  "metric": "Client SSD",
+  "kind": "contract",
+  "period": "4Q26",
+  "low_pct": 0,
+  "high_pct": 5,
+  "range_text": "under 5%",
+  "published": "2026-11-11",
+  "source_name": "TrendForce press release, Nov 11, 2026",
+  "source_url": "https://www.trendforce.com/presscenter/news/20261111-13303.html"
+ },
+ {
+  "metric": "Notebook shipments",
+  "kind": "shipments",
+  "period": "3Q26",
+  "low_pct": -15.8,
+  "high_pct": -15.8,
+  "range_text": "-15.8%",
+  "published": "2026-11-11",
+  "source_name": "TrendForce press release, Nov 11, 2026",
+  "source_url": "https://www.trendforce.com/presscenter/news/20261111-13303.html"
+ }
+]

@@ -1,0 +1,112 @@
+[
+ {
+  "item": "DDR5 16Gb (2Gx8) 4800/5600",
+  "board": "DRAM spot",
+  "session_avg": 60.667,
+  "change_pct": 0,
+  "low": 45.2,
+  "high": 72,
+  "as_of": "2026-11-20",
+  "source_name": "TrendForce",
+  "source_url": "https://www.trendforce.com/price/dram/dram_spot"
+ },
+ {
+  "item": "DDR5 16Gb (2Gx8) eTT",
+  "board": "DRAM spot",
+  "session_avg": 31,
+  "change_pct": 0.26,
+  "low": 30.2,
+  "high": 31.8,
+  "as_of": "2026-11-20",
+  "source_name": "TrendForce",
+  "source_url": "https://www.trendforce.com/price/dram/dram_spot"
+ },
+ {
+  "item": "DDR4 16Gb (2Gx8) 3200",
+  "board": "DRAM spot",
+  "session_avg": 78.625,
+  "change_pct": -0.16,
+  "low": 44,
+  "high": 110,
+  "as_of": "2026-11-20",
+  "source_name": "TrendForce",
+  "source_url": "https://www.trendforce.com/price/dram/dram_spot"
+ },
+ {
+  "item": "DDR4 16Gb (2Gx8) eTT",
+  "board": "DRAM spot",
+  "session_avg": 12.575,
+  "change_pct": -0.79,
+  "low": 11,
+  "high": 13,
+  "as_of": "2026-11-20",
+  "source_name": "TrendForce",
+  "source_url": "https://www.trendforce.com/price/dram/dram_spot"
+ },
+ {
+  "item": "DDR4 8Gb (1Gx8) 3200",
+  "board": "DRAM spot",
+  "session_avg": 43.75,
+  "change_pct": -0.39,
+  "low": 24.5,
+  "high": 80,
+  "as_of": "2026-11-20",
+  "source_name": "TrendForce",
+  "source_url": "https://www.trendforce.com/price/dram/dram_spot"
+ },
+ {
+  "item": "DDR4 8Gb (1Gx8) eTT",
+  "board": "DRAM spot",
+  "session_avg": 5.47,
+  "change_pct": -0.4,
+  "low": 5.15,
+  "high": 5.7,
+  "as_of": "2026-11-20",
+  "source_name": "TrendForce",
+  "source_url": "https://www.trendforce.com/price/dram/dram_spot"
+ },
+ {
+  "item": "DDR3 4Gb 512Mx8 1600/1866",
+  "board": "DRAM spot",
+  "session_avg": 13.771,
+  "change_pct": -0.25,
+  "low": 9.5,
+  "high": 21,
+  "as_of": "2026-11-20",
+  "source_name": "TrendForce",
+  "source_url": "https://www.trendforce.com/price/dram/dram_spot"
+ },
+ {
+  "item": "DDR5 UDIMM 16GB 4800/5600",
+  "board": "Module spot",
+  "session_avg": 245,
+  "change_pct": 0.69,
+  "low": 228,
+  "high": 278,
+  "as_of": "2026-11-09",
+  "source_name": "TrendForce",
+  "source_url": "https://www.trendforce.com/price/dram/dram_spot"
+ },
+ {
+  "item": "DDR4 UDIMM 16GB 3200",
+  "board": "Module spot",
+  "session_avg": 164.158,
+  "change_pct": -0.03,
+  "low": 156,
+  "high": 185,
+  "as_of": "2026-11-09",
+  "source_name": "TrendForce",
+  "source_url": "https://www.trendforce.com/price/dram/dram_spot"
+ },
+ {
+  "item": "GDDR6 8Gb",
+  "board": "GDDR spot",
+  "session_avg": 12.538,
+  "change_pct": 0.18,
+  "low": 10.3,
+  "high": 18,
+  "as_of": "2026-11-09",
+  "source_name": "TrendForce",
+  "source_url": "https://www.trendforce.com/price/dram/dram_spot"
+ }
+]

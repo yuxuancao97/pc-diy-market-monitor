@@ -1,0 +1,13 @@
+[
+ {
+  "item": "512Gb TLC",
+  "board": "NAND wafer spot",
+  "session_avg": 14.267,
+  "change_pct": -11.67,
+  "low": 12,
+  "high": 19,
+  "as_of": "2026-11-09",
+  "source_name": "TrendForce",
+  "source_url": "https://www.trendforce.com/price/flash/flash_spot"
+ }
+]
