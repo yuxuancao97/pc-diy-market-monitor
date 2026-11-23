@@ -5,6 +5,7 @@
   "description": "DRAM, NAND and graphics card prices for PC builders, re-read from public sources every hour.",
   "scripts": {
     "test": "node --test test/*.test.mjs",
+    "test:guard": "node scripts/main-guard-test.mjs",
     "fetch": "node scripts/fetch.mjs",
     "backfill": "node scripts/backfill.mjs",
     "serve": "node scripts/serve.mjs",

@@ -1,0 +1,10 @@
+#!/bin/bash
+# main moves only through `npm run worktree -- merge` (under the lock deploys
+# also take), or forward to exactly GitHub's main. Git asks this for every ref
+# update ($PPID is git itself, so pack-refs can be told from a deletion);
+# only the prepared phase can refuse, and the aborted phase puts the
+# folder back after a refused fast-forward (scripts/main-guard.mjs).
+case "$1" in prepared|aborted) ;; *) cat > /dev/null; exit 0 ;; esac
+refs=$(cat)
+case "$refs" in *" refs/heads/main"*) ;; *) exit 0 ;; esac
+printf '%s\n' "$refs" | node "$(git rev-parse --show-toplevel)/scripts/main-guard.mjs" main-update "$1" "$PPID"

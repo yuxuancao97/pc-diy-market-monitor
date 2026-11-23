@@ -17,11 +17,12 @@ if [ "$(git rev-parse --absolute-git-dir)" = "$(cd "$(git rev-parse --git-common
     echo "Move the work: npm run worktree -- new <who>/<task>"
     exit 1
   fi
-  if [ ! -f "$(git rev-parse --git-dir)/MERGE_HEAD" ]; then
-    echo "BLOCKED: main takes merges only. Make the change in its own worktree:"
-    echo "  npm run worktree -- new <who>/<task>"
-    exit 1
-  fi
+  # Merges reach main through npm run worktree -- merge, which never commits
+  # here (scripts/main-guard.mjs), so nothing is committed in this folder.
+  echo "BLOCKED: nothing is committed in the shared folder."
+  echo "  A change: npm run worktree -- new <who>/<task>"
+  echo "  A merge, once the owner has said so: npm run worktree -- merge <branch> \"<what>\""
+  exit 1
 fi
 
 fail=0
