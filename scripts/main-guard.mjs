@@ -102,7 +102,7 @@ export function forkPoint(cwd, branch, main = "main") {
 // and blank lines and lone brackets are left out: they match anywhere.
 export function droppedLines(cwd, base, gained, result) {
   const lost = new Map();
-  const diff = git(cwd, "diff", "--no-renames", "--no-ext-diff", "--no-color", "-U0", base, gained);
+  const diff = git(cwd, "-c", "core.quotePath=false", "diff", "--no-renames", "--no-ext-diff", "--no-color", "-U0", base, gained);
   let file = null, added = [];
   const flush = () => {
     if (!file || !added.length) return;
@@ -113,7 +113,8 @@ export function droppedLines(cwd, base, gained, result) {
   };
   for (const line of diff.split("\n")) {
     if (line.startsWith("diff --git ")) { flush(); file = null; added = []; continue; }
-    if (line.startsWith("+++ ")) { file = line === "+++ /dev/null" ? null : line.slice(6); continue; }
+    // Git ends a name that has a space with a tab, and quotes an odd one.
+    if (line.startsWith("+++ ")) { file = line === "+++ /dev/null" ? null : unquote(line.slice(4).replace(/\t$/, "")).slice(2); continue; }
     if (line.startsWith("Binary files ") && line.includes(" and b/")) {
       const name = line.slice(line.indexOf(" and b/") + 7, -" differ".length);
       if (blob(cwd, gained, name) !== null && git(cwd, "rev-parse", `${gained}:${name}`) !== revParseOrNull(cwd, `${result}:${name}`)) lost.set(name, { missing: ["(binary file)"], deleted: revParseOrNull(cwd, `${result}:${name}`) === null });
@@ -126,6 +127,17 @@ export function droppedLines(cwd, base, gained, result) {
   }
   flush();
   return lost;
+}
+function unquote(name) {
+  if (!name.startsWith('"')) return name;
+  const bytes = [];
+  for (let i = 1; i < name.length - 1; i++) {
+    if (name[i] !== "\\") { bytes.push(...Buffer.from(name[i])); continue; }
+    const next = name[++i];
+    if (/[0-7]/.test(next)) { bytes.push(parseInt(name.slice(i, i + 3), 8)); i += 2; }
+    else bytes.push({ n: 10, t: 9, '"': 34, "\\": 92 }[next] ?? next.charCodeAt(0));
+  }
+  return Buffer.from(bytes).toString("utf8");
 }
 function revParseOrNull(cwd, spec) { try { return git(cwd, "rev-parse", "-q", "--verify", spec); } catch { return null; } }
 function blob(cwd, commit, file) {
