@@ -67,8 +67,8 @@ if (command === "new") {
   // The tests run in the branch's own worktree, whose files are exactly the
   // merged result since the branch already holds current main; main then
   // moves in one step. The shared folder is never left half-merged: in
-  // Try KANALI on 2026-11-20 it was, for a whole test run, while other chats
-  // merged and deployed from it.
+  // Try KANALI on 2026-11-20 it was, for a whole test run, and two chats'
+  // merges ran there at the same moment.
   const drops = rest.indexOf("--drops");
   const why = drops >= 0 ? rest.splice(drops, 2)[1]?.trim() : "";
   const what = rest.join(" ").trim();
@@ -76,6 +76,8 @@ if (command === "new") {
   if (!ok(["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`], shared)) stop(`There is no branch ${branch}.`);
   const tree = trees.find(tree => tree.branch === branch);
   if (!tree) stop(`${branch} is in no worktree. The tests run in its worktree: git worktree add .claude/worktrees/${branch.split("/")[1]} ${branch}`);
+  // The hooks enforce the rest; a repository cloned fresh has them off.
+  git(["config", "core.hooksPath", ".githooks"], shared);
   try {
     withLock(shared, `merging ${branch}`, token => {
       const current = git(["branch", "--show-current"], shared);

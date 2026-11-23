@@ -118,6 +118,8 @@ check("main did not move", mainSha() === atHand);
 check("the shared folder's files are put back", git(shared, "status", "--porcelain") === "" && !existsSync(join(shared, "other.js")), git(shared, "status", "--porcelain"));
 r = run(shared, "git", ["merge", "--no-ff", "--no-edit", "claude/f"]);
 check("a merge commit by hand is refused", r.status !== 0 && mainSha() === atHand, r.stderr);
+check("a refused merge by hand leaves no merge in progress", !existsSync(join(shared, ".git", "MERGE_HEAD")));
+check("a refused merge by hand leaves the folder clean", git(shared, "status", "--porcelain") === "", git(shared, "status", "--porcelain"));
 run(shared, "git", ["merge", "--abort"]);
 run(shared, "git", ["reset", "-q", "--hard", "main"]);
 check("git branch -f main is refused", run(shared, "git", ["branch", "-f", "main", "claude/f"]).status !== 0 || mainSha() === atHand);
@@ -125,6 +127,17 @@ check("update-ref is refused", run(shared, "git", ["update-ref", "refs/heads/mai
 check("a commit in the shared folder is refused", (writeFileSync(join(shared, "x.txt"), "x"), commit(shared, "direct")).status !== 0);
 rmSync(join(shared, "x.txt"));
 git(shared, "reset", "-q");
+
+// Deleting main is refused, packed or not; packing refs is housekeeping.
+git(shared, "pack-refs", "--all", "--prune");
+check("pack-refs leaves main in place", mainSha() === atHand);
+for (const deletion of [["update-ref", "-d", "refs/heads/main"], ["update-ref", "-d", "refs/heads/main", atHand]]) {
+  r = run(shared, "git", deletion);
+  check(`git ${deletion.join(" ")} is refused once main is packed`, r.status !== 0 && /Do not delete main/.test(r.stderr) && mainSha() === atHand, r.stderr);
+}
+r = run(f, "git", ["merge", "-q", "--no-edit", "main"]);
+r = worktree(["check", "claude/c"]);
+check("check on a branch behind main says to bring main in", r.status !== 0 && /Bring main in first/.test(r.stderr), r.stdout + r.stderr);
 
 // 7. The lock: a live holder refuses, a dead one is cleared.
 const lock = join(shared, ".git", "tryx-main.lock");

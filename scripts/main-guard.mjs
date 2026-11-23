@@ -3,10 +3,9 @@
 // The same file is in every TRYX repository with a shared folder (try-kanali,
 // market-monitor, tryx-dna); keep the copies identical.
 //
-// What went wrong before (2026-11-20, Try KANALI): `worktree -- merge` left
-// the shared folder half-merged for the whole test run, and other chats
-// merged and deployed from that same folder in the same half hour. One chat
-// had to undo its merge there; deploys read files that were not on main.
+// What went wrong before (Try KANALI, 2026-11-20): `worktree -- merge` left
+// the shared folder half-merged for its whole test run, and two chats ran
+// their merges there at the same moment; one merge had to be undone.
 //
 // Four rules, each enforced here:
 // 1. One thing changes main at a time: merges and deploys take one lock.
@@ -21,7 +20,7 @@
 //   node scripts/main-guard.mjs dropped <branch>          what merging it would throw away
 //   node scripts/main-guard.mjs deploy -- <command ...>   run the deploy under the rules
 //   node scripts/main-guard.mjs merge-message <file>      commit-msg hook
-//   node scripts/main-guard.mjs main-update <phase>       reference-transaction hook
+//   node scripts/main-guard.mjs main-update <phase> <pid> reference-transaction hook
 //   node scripts/main-guard.mjs push                      pre-push hook (refs on stdin)
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -187,7 +186,7 @@ function guardMergeMessage(messageFile) {
 
 // reference-transaction: main moves only under the lock (the merge command
 // sets TRYX_MAIN_TOKEN), or forward to exactly GitHub's main.
-function guardMainUpdate(phase) {
+function guardMainUpdate(phase, gitPid) {
   const lines = readFileSync(0, "utf8").trim().split("\n").filter(Boolean).map(line => line.split(" "));
   const cwd = process.cwd();
   const shared = sharedFolder(cwd);
@@ -200,8 +199,9 @@ function guardMainUpdate(phase) {
     if (ZERO.test(oldCommit)) oldCommit = revParseOrNull(cwd, "refs/heads/main") ?? oldCommit;
     if (oldCommit === newCommit || ZERO.test(oldCommit)) continue;
     if (ZERO.test(newCommit)) {
-      // pack-refs moves main into packed-refs at the same commit: housekeeping.
-      if (packedMain(cwd) === oldCommit) continue;
+      // pack-refs moves main into packed-refs at the same commit and then
+      // deletes the loose file: housekeeping, but only from pack-refs itself.
+      if (isPackRefs(gitPid) && packedMain(cwd) === oldCommit) continue;
       throw new GuardError("Do not delete main.");
     }
     const owner = readLock(lockDir(cwd));
@@ -218,11 +218,21 @@ function guardMainUpdate(phase) {
 function restoreRefusedCheckout(shared, lines) {
   for (const [oldCommit, newCommit, ref] of lines) {
     if (ref !== "refs/heads/main" || oldCommit === newCommit || ZERO.test(oldCommit) || ZERO.test(newCommit)) continue;
-    if (revParseOrNull(shared, "HEAD") !== oldCommit || git(shared, "symbolic-ref", "-q", "HEAD") !== "refs/heads/main") continue;
+    if (revParseOrNull(shared, "HEAD") !== oldCommit || spawnSync("git", ["-C", shared, "symbolic-ref", "-q", "HEAD"], { env, encoding: "utf8" }).stdout.trim() !== "refs/heads/main") continue;
     const back = spawnSync("git", ["-C", shared, "read-tree", "-m", "-u", newCommit, oldCommit], { env, encoding: "utf8" });
-    console.error(back.status === 0 ? "main was not moved, and the files the refused update had written are back as they were."
-      : `main was not moved, but the folder could not be put back:\n${back.stderr.trim()}\nCheck git status before anyone deploys from it.`);
+    if (back.status !== 0) { console.error(`main was not moved, but the folder could not be put back:\n${back.stderr.trim()}\nCheck git status before anyone deploys from it.`); continue; }
+    // A refused merge commit by hand would leave a merge in progress, and
+    // every later merge and deploy would stop on it.
+    const gitDir = git(shared, "rev-parse", "--path-format=absolute", "--git-dir");
+    for (const file of ["MERGE_HEAD", "MERGE_MSG", "MERGE_MODE", "AUTO_MERGE"]) rmSync(join(gitDir, file), { force: true });
+    console.error("main was not moved, and the files the refused update had written are back as they were.");
   }
+}
+// gc and maintenance start pack-refs by git's full path; a person may add -C or -c.
+function isPackRefs(pid) {
+  if (!/^\d+$/.test(pid ?? "")) return false;
+  const ps = spawnSync("ps", ["-o", "args=", "-p", pid], { encoding: "utf8" });
+  return ps.status === 0 && /^(?:\S*\/)?git(?: -[Cc] \S+)* pack-refs(?:\s|$)/.test(ps.stdout.trim());
 }
 function packedMain(cwd) {
   const file = join(resolve(cwd, git(cwd, "rev-parse", "--path-format=absolute", "--git-common-dir")), "packed-refs");
@@ -286,12 +296,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       const branch = rest[0];
       if (!branch) throw new GuardError("Usage: main-guard.mjs dropped <branch>");
       const cwd = sharedFolder();
+      if (!isAncestor(cwd, "main", branch)) throw new GuardError(`${branch} does not hold current main yet. Bring main in first (git merge main in its worktree), then check again.`);
       const lost = droppedByMerge(cwd, branch);
       const fork = forkPoint(cwd, branch);
       console.log(lost.size ? `Merging ${branch} would leave out lines main gained since it started:\n${describeDropped(cwd, lost, fork, "main")}` : `Merging ${branch} keeps everything main gained since it started.`);
     } else if (command === "deploy") deploy(rest[0] === "--" ? rest.slice(1) : rest);
     else if (command === "merge-message") guardMergeMessage(rest[0]);
-    else if (command === "main-update") guardMainUpdate(rest[0]);
+    else if (command === "main-update") guardMainUpdate(rest[0], rest[1]);
     else if (command === "push") guardPush();
     else throw new GuardError("main-guard.mjs dropped <branch> | deploy -- <command> | merge-message <file> | main-update <phase> | push");
   } catch (error) {
