@@ -2,6 +2,10 @@
 # Only merged work goes to GitHub: main, after the owner approved the merge.
 # A task branch goes up only when the owner asked for that branch in the
 # current conversation: PUSH_TASK_BRANCH=1 git push origin <branch>
+# And a push to main never drops commits GitHub already has
+# (scripts/main-guard.mjs push).
+refs=$(cat)
+printf '%s\n' "$refs" | node "$(git rev-parse --show-toplevel)/scripts/main-guard.mjs" push || exit 1
 while read -r local_ref _ remote_ref _; do
   case "$remote_ref" in
     refs/heads/main|refs/tags/*) ;;
@@ -11,5 +15,5 @@ while read -r local_ref _ remote_ref _; do
       echo "BLOCKED: ${remote_ref#refs/heads/} is not main. Task branches stay on this Mac until merged."
       exit 1 ;;
   esac
-done
+done <<< "$refs"
 exit 0

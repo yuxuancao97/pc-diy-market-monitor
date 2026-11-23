@@ -1,0 +1,5 @@
+#!/bin/bash
+# A merge being committed (a "bring main in" whose conflicts were resolved by
+# hand, or a clean one) keeps every line either side added, unless the
+# message says what it drops and why: Drops: <what and why>.
+exec node "$(git rev-parse --show-toplevel)/scripts/main-guard.mjs" merge-message "$1"

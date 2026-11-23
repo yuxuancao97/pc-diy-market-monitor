@@ -106,8 +106,18 @@ read by anyone.
   `.claude/worktrees/`. `npm run worktree -- list` shows who is where.
 - Commit on your branch before you finish.
 - Merge one branch at a time with `npm run worktree -- merge`, and only when
-  the owner says so in the current conversation. It runs the tests on the
-  merged result.
+  the owner says so in the current conversation. Bring `main` in first, then
+  `npm run worktree -- check <branch>`. The merge runs the tests in the
+  branch's worktree and moves `main` in one step; it takes the same lock as
+  any other merge ("main is busy": wait and run it again).
+- No merge rolls back other work (`scripts/main-guard.mjs`): leaving out
+  lines `main` gained while the branch was in progress is refused, at the
+  merge and when a conflict resolution is committed. Put them back, or, only
+  when removing them is the point, say why: `--drops "<what and why>"` on
+  `merge`, a `Drops: <what and why>` line in a merge commit's message.
+- The hooks refuse any commit in the shared folder, any move of `main` but
+  the merge command's (or catching up with GitHub's `main`), and a push that
+  drops commits GitHub has. `npm run test:guard` tests them.
 - Only merged `main` is pushed, and only when the owner asks in the current
   conversation. A push to `main` publishes the page, so a push is a deploy.
 - Never bypass a git hook with `--no-verify`.
