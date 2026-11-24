@@ -116,7 +116,10 @@ export function droppedLines(cwd, base, gained, result) {
     if (line.startsWith("+++ ")) { file = line === "+++ /dev/null" ? null : unquote(line.slice(4).replace(/\t$/, "")).slice(2); continue; }
     if (line.startsWith("Binary files ") && line.includes(" and b/")) {
       const name = line.slice(line.indexOf(" and b/") + 7, -" differ".length);
-      if (blob(cwd, gained, name) !== null && git(cwd, "rev-parse", `${gained}:${name}`) !== revParseOrNull(cwd, `${result}:${name}`)) lost.set(name, { missing: ["(binary file)"], deleted: revParseOrNull(cwd, `${result}:${name}`) === null });
+      if (blob(cwd, gained, name) !== null) {
+        const kept = revParseOrNull(cwd, at(result, name));
+        if (git(cwd, "rev-parse", at(gained, name)) !== kept) lost.set(name, { missing: ["(binary file)"], deleted: kept === null });
+      }
       continue;
     }
     if (file && line.startsWith("+") && !line.startsWith("+++")) {
@@ -139,8 +142,11 @@ function unquote(name) {
   return Buffer.from(bytes).toString("utf8");
 }
 function revParseOrNull(cwd, spec) { try { return git(cwd, "rev-parse", "-q", "--verify", spec); } catch { return null; } }
+// A file in a commit, or in the index when `commit` is ":" (a merge being
+// committed): ":path", never "::path", which matches nothing.
+const at = (commit, file) => commit === ":" ? `:${file}` : `${commit}:${file}`;
 function blob(cwd, commit, file) {
-  const r = spawnSync("git", ["-C", cwd, "show", commit === ":" ? `:${file}` : `${commit}:${file}`], { env, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  const r = spawnSync("git", ["-C", cwd, "show", at(commit, file)], { env, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
   return r.status === 0 ? r.stdout : null;
 }
 

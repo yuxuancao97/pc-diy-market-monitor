@@ -180,6 +180,41 @@ git(shared, "fetch", "-q", "origin");
 r = run(shared, "git", ["push", "--force", "origin", "main"]);
 check("a force push that drops GitHub's commits is refused", r.status !== 0 && r.stderr.includes("would drop commits"), r.stderr);
 
+// 10. Binary files in a merge being committed. A picture either side added
+// is kept, not read as gone (2026-11-24: the hook looked it up as "::path"
+// and refused claude/shadow-baked's `git merge main`). Keeping one side's
+// picture in a conflict, or deleting it, still stops.
+const picture = n => Buffer.from([0x52, 0x49, 0x46, 0x46, 0, 0, 0, n, 0x57, 0x45, 0x42, 0x50, 0, 1, 2, 3]);
+const g = newBranch("g"), h = newBranch("h");
+writeFileSync(join(g, "shadow.webp"), picture(1));
+commit(g, "g's picture");
+writeFileSync(join(h, "floor.webp"), picture(2));
+commit(h, "h's picture");
+check("h merges", worktree(["merge", "claude/h", "h's picture"]).status === 0);
+r = run(g, "git", ["merge", "--no-edit", "main"]);
+check("bringing main in keeps both sides' new binary files and commits", r.status === 0 && git(g, "rev-list", "--parents", "-1", "HEAD").split(" ").length === 3 && !/^Drops:/m.test(git(g, "log", "-1", "--format=%B")), r.stderr);
+check("g's merge kept both pictures", existsSync(join(g, "shadow.webp")) && existsSync(join(g, "floor.webp")));
+
+const m = newBranch("m"), n = newBranch("n");
+writeFileSync(join(m, "floor.webp"), picture(3));
+commit(m, "m's floor");
+check("m merges", worktree(["merge", "claude/m", "m's floor"]).status === 0);
+writeFileSync(join(n, "floor.webp"), picture(4));
+commit(n, "n's floor");
+check("bringing main into n conflicts on the picture", run(n, "git", ["merge", "main"]).status !== 0);
+git(n, "checkout", "--ours", "floor.webp");
+git(n, "add", "floor.webp");
+r = run(n, "git", ["commit", "--no-edit"]);
+check("keeping one side's picture in a conflict is refused", r.status !== 0 && r.stderr.includes("floor.webp") && r.stderr.includes("(binary file)") && !r.stderr.includes("the file is gone"), r.stderr);
+git(n, "rm", "-q", "floor.webp");
+r = run(n, "git", ["commit", "--no-edit"]);
+check("deleting a picture main changed is refused", r.status !== 0 && r.stderr.includes("floor.webp (the file is gone)"), r.stderr);
+git(n, "checkout", "HEAD", "--", "floor.webp");
+r = run(n, "git", ["commit", "-m", "Bring main in\n\nDrops: m's floor, n's is the owner's pick"]);
+check("a Drops: line lets a kept-one-side picture through", r.status === 0, r.stderr);
+r = worktree(["check", "claude/n"]);
+check("check names the picture the branch would drop", r.stdout.includes("floor.webp") && r.stdout.includes("(binary file)"), r.stdout + r.stderr);
+
 rmSync(root, { recursive: true, force: true });
 console.log(`main-guard: ${passes} passed, ${failures} failed`);
 process.exitCode = failures ? 1 : 0;
