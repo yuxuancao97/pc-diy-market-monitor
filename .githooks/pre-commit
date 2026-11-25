@@ -31,4 +31,6 @@ while IFS= read -r f; do
     .env|*/.env|*.pem|*.key) echo "BLOCKED: $f holds keys. This repository is public."; fail=1 ;;
   esac
 done <<< "$(git diff --cached --name-only --diff-filter=ACM)"
+# No key or secret inside any staged file (scripts/secret-scan.mjs).
+node scripts/secret-scan.mjs --staged || fail=1
 exit $fail

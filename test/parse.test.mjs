@@ -342,6 +342,8 @@ test("nothing private or secret is in the files that get published", () => {
   });
   for (const path of walk(here(".."))) {
     if (path.endsWith("parse.test.mjs")) continue;
+    // The key scanner and its test name key formats to look for them.
+    if (/\/secret-scan(-test|\.test)?\.mjs$/.test(path)) continue;
     const body = readFileSync(path, "utf8");
     for (const pattern of banned) assert.ok(!pattern.test(body), `${path} matches ${pattern}`);
   }
