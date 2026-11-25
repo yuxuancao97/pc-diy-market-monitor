@@ -28,7 +28,7 @@ const SKIP_EXT = new Set([
   ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".ico", ".bmp", ".tif", ".tiff", ".heic", ".psd",
   ".mp4", ".mov", ".webm", ".m4v", ".mkv", ".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac",
   ".woff", ".woff2", ".ttf", ".otf", ".eot", ".pdf", ".zip", ".gz", ".tgz", ".7z", ".rar",
-  ".glb", ".gltf", ".bin", ".hdr", ".exr", ".ktx2", ".usdz", ".pptx", ".docx", ".xlsx", ".key",
+  ".glb", ".gltf", ".bin", ".hdr", ".exr", ".ktx2", ".usdz", ".pptx", ".docx", ".xlsx",
   ".db", ".sqlite", ".wasm", ".dylib", ".so", ".node",
 ]);
 const SKIP_DIRS = new Set([".git", "node_modules", ".wrangler", ".DS_Store"]);
@@ -138,9 +138,9 @@ function mask(v) {
 // appear in this file.
 export function scanText(file, text, secrets = new Map(), allowed = new Set()) {
   const found = [];
-  const add = (index, what, value) => {
+  const add = (index, what, value, shown = mask(value)) => {
     if (lineAt(text, index).includes(ALLOW_MARK)) return;
-    found.push({ file, line: lineOf(text, index), what, value: mask(value) });
+    found.push({ file, line: lineOf(text, index), what, value: shown });
   };
   for (const [what, re] of PATTERNS) {
     for (const m of text.matchAll(re)) add(m.index, what, m[0]);
@@ -148,7 +148,8 @@ export function scanText(file, text, secrets = new Map(), allowed = new Set()) {
   for (const [value, key] of secrets) {
     if (allowed.has(key)) continue;
     for (let i = text.indexOf(value); i !== -1; i = text.indexOf(value, i + value.length)) {
-      add(i, `the value of ${key} from the local secret file`, value);
+      // Not even the start of a real value is printed: deploy output is logged.
+      add(i, `the value of ${key} from the local secret file`, value, `${value.length} characters`);
     }
   }
   for (const m of text.matchAll(NAMED)) {

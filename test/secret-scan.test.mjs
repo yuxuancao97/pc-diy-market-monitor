@@ -9,6 +9,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// Run from a git hook, GIT_DIR and friends point at the repository being
+// committed or pushed; the throwaway repository below must not touch it.
+for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete process.env[name];
+
 const here = dirname(fileURLToPath(import.meta.url));
 const SCANNER = [join(here, "secret-scan.mjs"), join(here, "..", "scripts", "secret-scan.mjs")].find(existsSync);
 const { scanText, scan } = await import(SCANNER);
@@ -61,6 +65,12 @@ test("the allow mark skips its own line only", () => {
   const key = "gh" + "p_" + r(36);
   assert.deepEqual(scanText("f.js", `"${key}" // secret-` + "scan: allow"), []);
   assert.equal(scanText("f.js", `"${key}" // secret-` + "scan: allow\n" + `"${key}"`).length, 1);
+});
+
+test("a .key file is read, not skipped as a picture", () => {
+  const dir = mkdtempSync(join(tmpdir(), "secret-scan-key-"));
+  writeFileSync(join(dir, "server.key"), "-----BEGIN " + "PRIVATE KEY-----\n" + r(64, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/") + "\n");
+  try { assert.equal(scan({ cwd: dir, paths: ["server.key"] }).length, 1); } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test("the report never prints the secret", () => {
@@ -119,7 +129,7 @@ try {
     const bad = spawnSync(process.execPath, [SCANNER, "public"], { cwd: repo, encoding: "utf8" });
     assert.equal(bad.status, 1);
     assert.match(bad.stderr, /BLOCKED/);
-    assert.ok(!bad.stderr.includes(giphy), "the report printed the key");
+    assert.ok(!bad.stderr.includes(giphy.slice(0, 4)), "the report printed part of a local secret");
     const ok = spawnSync(process.execPath, [SCANNER, "public", "--allow-value", "GIPHY_API_KEY@public/config.js"], { cwd: repo, encoding: "utf8" });
     assert.equal(ok.status, 0, ok.stderr);
   });
