@@ -21,7 +21,10 @@ read by anyone.
 - `.github/workflows/refresh.yml` runs every hour, on every push to `main`
   and by hand. It runs the tests, restores the last data from the `data`
   branch, reads the source pages, saves the data back to `data`, and
-  publishes `site/` to GitHub Pages. The `data` branch is written only by
+  publishes `.build/site` to GitHub Pages: a copy of `site/` that
+  `scripts/build-public.mjs` makes with every comment taken out. `site/`
+  keeps its comments; the build fails on any comment or internal note left
+  in what it serves. The `data` branch is written only by
   that workflow; never commit to it or merge it.
 - The publish run writes the commit's short name over `__BUILD__` in
   `index.html` and into `build.json`. A page that finds the two differ loads
@@ -41,8 +44,10 @@ read by anyone.
 - `npm run backfill`: rebuild the two archive files from the Internet
   Archive. `-- --parse` re-reads the saved copies without downloading. Copies
   are kept in `BACKFILL_CACHE` (default `.cache/backfill`, not in git).
+- `npm run build`: make `.build/site`, the comment-free copy Pages serves.
 - `npm run serve`: serve `site/` on `127.0.0.1:8931` (`HOST` and `PORT` from
-  the environment).
+  the environment; `SITE=.build/site` serves the built copy).
+- `npm ci` once in a new worktree; `npm run worktree -- new` does it.
 - `npm run worktree -- new <who>/<task> | list | merge <branch> "<what>"`.
 
 ## Data is exact

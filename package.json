@@ -8,8 +8,12 @@
     "test:guard": "node scripts/main-guard-test.mjs",
     "fetch": "node scripts/fetch.mjs",
     "backfill": "node scripts/backfill.mjs",
+    "build": "node scripts/build-public.mjs --check",
     "serve": "node scripts/serve.mjs",
     "worktree": "node scripts/worktree.mjs"
   },
-  "engines": { "node": ">=20" }
+  "engines": { "node": ">=20" },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
 }
