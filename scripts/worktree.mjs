@@ -6,7 +6,7 @@
 // The shared folder stays on main and clean, because other chats branch from
 // whatever is checked out there.
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, symlinkSync } from "node:fs";
 import { join, relative } from "node:path";
 import { GuardError, describeDropped, droppedByMerge, forkPoint, withLock } from "./main-guard.mjs";
 
@@ -40,7 +40,12 @@ if (command === "new") {
   if (existsSync(dir)) stop(`${dir} is already there.`);
   git(["config", "core.hooksPath", ".githooks"], shared);
   git(["worktree", "add", "-b", branch, dir, "main"], shared);
-  console.log(`${branch} is in ${dir}\nTests: npm test runs there as it is\nPreview: PORT=${port(dir)} npm run serve`);
+  // The tests need esbuild: the shared folder's node_modules is linked when
+  // it has it, otherwise the worktree installs its own.
+  let tests = "npm test runs there as it is";
+  if (existsSync(join(shared, "node_modules", "esbuild"))) symlinkSync(join(shared, "node_modules"), join(dir, "node_modules"));
+  else if (existsSync(join(dir, "package-lock.json")) && spawnSync("npm", ["ci", "--silent"], { cwd: dir, stdio: "inherit" }).status !== 0) tests = "run npm ci there before npm test";
+  console.log(`${branch} is in ${dir}\nTests: ${tests}\nPreview: PORT=${port(dir)} npm run serve`);
 } else if (command === "list") {
   const mainline = new Set(git(["rev-list", "--first-parent", "main"], shared).split("\n"));
   for (const [i, tree] of trees.entries()) {
