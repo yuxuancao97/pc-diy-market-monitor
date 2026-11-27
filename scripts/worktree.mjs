@@ -44,7 +44,7 @@ if (command === "new") {
   // it has it, otherwise the worktree installs its own.
   let tests = "npm test runs there as it is";
   if (existsSync(join(shared, "node_modules", "esbuild"))) symlinkSync(join(shared, "node_modules"), join(dir, "node_modules"));
-  else if (spawnSync("npm", ["ci", "--silent"], { cwd: dir, stdio: "inherit" }).status !== 0) tests = "run npm ci there before npm test";
+  else if (existsSync(join(dir, "package-lock.json")) && spawnSync("npm", ["ci", "--silent"], { cwd: dir, stdio: "inherit" }).status !== 0) tests = "run npm ci there before npm test";
   console.log(`${branch} is in ${dir}\nTests: ${tests}\nPreview: PORT=${port(dir)} npm run serve`);
 } else if (command === "list") {
   const mainline = new Set(git(["rev-list", "--first-parent", "main"], shared).split("\n"));

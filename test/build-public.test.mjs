@@ -25,10 +25,10 @@ test("the check finds planted comments and notes, and lets a licence through", (
     assert.match(check("a.js", "/* note */ x();\n/*! @license MIT */\n"), /a block comment/, "a licence later in the file does not excuse an earlier comment");
     assert.match(check("b.html", "<p>Hi</p><!-- for the team -->"), /an HTML comment/);
     assert.match(check("c.svg", "<svg><!-- exported --></svg>"), /an HTML comment/, "SVG files are checked");
-    assert.match(check("d.css", "a{color:red} /* (owner, 2026-11-26) */"), /owner note/);
+    assert.match(check("d.css", "a{color:red} /* (owner, 2000-01-01) */"), /owner note/);
     assert.match(check("e.js", 'const s = "see docs/NOTES.md";'), /a repository path/);
     assert.match(check("f.js", 'const s = "built on the box at /Users/someone/x";'), /a machine name/);
-    assert.match(check("g.json", '{"note":"(owner, 2026-11-26) keep this"}'), /an owner note/, "data files are checked");
+    assert.match(check("g.json", '{"note":"(owner, 2000-01-01) keep this"}'), /an owner note/, "data files are checked");
     assert.equal(check("i.json", '{"name":"Card XXX /* draft */ hack"}'), "", "text copied from a source page is not a note");
     assert.match(check("j.js.map", '{"version":3}'), /a source map/);
     assert.equal(check("h.js", '/*! @license MIT */ x(); const u = "https://example.com/a/b";'), "", "a licence and a URL are not leaks");
