@@ -41,9 +41,9 @@ if (command === "new") {
   git(["config", "core.hooksPath", ".githooks"], shared);
   git(["worktree", "add", "-b", branch, dir, "main"], shared);
   // The tests need esbuild: the shared folder's node_modules is linked when
-  // it has one, otherwise the worktree installs its own.
+  // it has it, otherwise the worktree installs its own.
   let tests = "npm test runs there as it is";
-  if (existsSync(join(shared, "node_modules"))) symlinkSync(join(shared, "node_modules"), join(dir, "node_modules"));
+  if (existsSync(join(shared, "node_modules", "esbuild"))) symlinkSync(join(shared, "node_modules"), join(dir, "node_modules"));
   else if (spawnSync("npm", ["ci", "--silent"], { cwd: dir, stdio: "inherit" }).status !== 0) tests = "run npm ci there before npm test";
   console.log(`${branch} is in ${dir}\nTests: ${tests}\nPreview: PORT=${port(dir)} npm run serve`);
 } else if (command === "list") {

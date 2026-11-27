@@ -69,28 +69,35 @@ export function build(source = SOURCE, out = OUT) {
 // What must never reach a visitor: a comment of any kind, or the words only
 // a comment would hold (notes about decisions, the repository's own folders,
 // the machines it is worked on).
-const LEAKS = [
-  [/<!--/, "an HTML comment"],
+// JSON cannot hold a comment, and most of it is text copied from other
+// sites, so a data file is checked only for the notes a person could add.
+const NOTES = [
   [/\(owner,|owner's word|owner approved/i, "an owner note"],
   [/\b(docs|scripts|test)\/[\w./-]+\.(md|mjs)\b/, "a repository path"],
   [/tailscale|\.ts\.net\b|\/Users\/|\/private\/tmp\//i, "a machine name"],
+];
+const LEAKS = [
+  [/<!--/, "an HTML comment"],
+  ...NOTES,
   [/\b(TODO|FIXME|XXX|hack)\b/i, "a working note"],
 ];
 
-export function leaksIn(text) {
-  const found = LEAKS.map(([pattern, what]) => [pattern.exec(text), what]).filter(([m]) => m);
+export function leaksIn(text, data = false) {
+  const found = (data ? NOTES : LEAKS).map(([pattern, what]) => [pattern.exec(text), what]).filter(([m]) => m);
   // Each block comment on its own: only a licence may stay.
-  for (const m of text.matchAll(/\/\*[\s\S]*?\*\//g)) {
+  if (!data) for (const m of text.matchAll(/\/\*[\s\S]*?\*\//g)) {
     if (!m[0].startsWith("/*!") && !/@license|@preserve/.test(m[0])) { found.push([m, "a block comment"]); break; }
   }
   return found.map(([m, what]) => [m.index, what]);
 }
 
 export function findLeaks(dir = OUT) {
-  return served(dir).flatMap((path) => {
+  // A source map would hand back the commented source.
+  const maps = files(dir).filter((path) => path.endsWith(".map")).map((path) => `${relative(dir, path)}: a source map`);
+  return maps.concat(served(dir).flatMap((path) => {
     const text = readFileSync(path, "utf8");
-    return leaksIn(text).map(([i, what]) => `${relative(dir, path)}: ${what}: ${JSON.stringify(text.slice(Math.max(0, i - 30), i + 50))}`);
-  });
+    return leaksIn(text, path.endsWith(".json")).map(([i, what]) => `${relative(dir, path)}: ${what}: ${JSON.stringify(text.slice(Math.max(0, i - 30), i + 50))}`);
+  }));
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

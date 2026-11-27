@@ -28,7 +28,9 @@ test("the check finds planted comments and notes, and lets a licence through", (
     assert.match(check("d.css", "a{color:red} /* (owner, 2026-11-26) */"), /owner note/);
     assert.match(check("e.js", 'const s = "see docs/NOTES.md";'), /a repository path/);
     assert.match(check("f.js", 'const s = "built on the box at /Users/someone/x";'), /a machine name/);
-    assert.match(check("g.json", '{"note":"TODO fix this"}'), /a working note/, "data files are checked");
+    assert.match(check("g.json", '{"note":"(owner, 2026-11-26) keep this"}'), /an owner note/, "data files are checked");
+    assert.equal(check("i.json", '{"name":"Card XXX /* draft */ hack"}'), "", "text copied from a source page is not a note");
+    assert.match(check("j.js.map", '{"version":3}'), /a source map/);
     assert.equal(check("h.js", '/*! @license MIT */ x(); const u = "https://example.com/a/b";'), "", "a licence and a URL are not leaks");
   } finally {
     rmSync(dir, { recursive: true, force: true });
