@@ -1,0 +1,47 @@
+{
+ "generated_at": "2026-11-28T13:06:06.503Z",
+ "sources": [
+  {
+   "id": "dram_spot",
+   "title": "TrendForce DRAM, module and GDDR spot boards",
+   "url": "https://www.trendforce.com/price/dram/dram_spot",
+   "ok": true,
+   "read_at": "2026-11-28T13:06:06.503Z"
+  },
+  {
+   "id": "nand_wafer_board",
+   "title": "TrendForce NAND wafer spot board",
+   "url": "https://www.trendforce.com/price/flash/flash_spot",
+   "ok": true,
+   "read_at": "2026-11-28T13:06:06.503Z"
+  },
+  {
+   "id": "ddr5_kit_retail",
+   "title": "Capital & Compute 32GB DDR5 kit prices",
+   "url": "https://capitalandcompute.net/memory-prices/",
+   "ok": true,
+   "read_at": "2026-11-28T13:06:06.503Z"
+  },
+  {
+   "id": "kit_sizes",
+   "title": "Capital & Compute shop prices by capacity",
+   "url": "https://capitalandcompute.net/memory-prices/",
+   "ok": true,
+   "read_at": "2026-11-28T13:06:06.503Z"
+  },
+  {
+   "id": "gpu_cards",
+   "title": "Tom's Hardware GPU price tracker",
+   "url": "https://www.tomshardware.com/pc-components/gpus/lowest-gpu-prices-tracking",
+   "ok": true,
+   "read_at": "2026-11-28T13:06:06.503Z"
+  },
+  {
+   "id": "gpu_index",
+   "title": "TechFuelHQ GPU Price Index, CC BY 4.0",
+   "url": "https://techfuelhq.com/data/gpu-price-index/",
+   "ok": true,
+   "read_at": "2026-11-28T13:06:06.503Z"
+  }
+ ]
+}
